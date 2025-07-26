@@ -1,3 +1,4 @@
+// src/components/ClientWrapper.js
 'use client';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -12,6 +13,7 @@ import VisualGenerator from '@/components/VisualGenerator';
 import Analytics from '@/components/Analytics';
 import ContentLibrary from '@/components/ContentLibrary';
 import KnowledgeBase from '@/components/KnowledgeBase';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { 
   BookOpen, PenTool, Layers, Mic, Image, BarChart3, 
   FolderOpen, Brain, Home as HomeIcon, Sparkles 
@@ -20,7 +22,8 @@ import {
 export default function ClientWrapper() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const teacherId = 'teacher_001';
 
   const navigationItems = [
@@ -36,10 +39,32 @@ export default function ClientWrapper() {
   ];
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setMounted(true);
-    }, 1000);
-    return () => clearTimeout(timer);
+    // Simulate app initialization
+    const initializeApp = async () => {
+      try {
+        setLoading(true);
+        
+        // Check if API is available
+        try {
+          const response = await fetch('http://localhost:8080/health');
+          if (!response.ok) {
+            throw new Error('Backend not available');
+          }
+        } catch (apiError) {
+          console.log('Backend not available, running in offline mode');
+        }
+        
+        // Simulate loading time
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        setLoading(false);
+      } catch (error) {
+        console.error('Initialization error:', error);
+        setLoading(false);
+      }
+    };
+
+    initializeApp();
   }, []);
 
   const renderActiveComponent = () => {
@@ -60,71 +85,30 @@ export default function ClientWrapper() {
     return <Component {...props} />;
   };
 
-  if (!mounted) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-indigo-50 flex items-center justify-center">
-        <div className="text-center">
-          <motion.div
-            className="relative mb-8"
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 0.8, type: "spring" }}
-          >
-            <div className="w-32 h-32 bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-600 rounded-3xl flex items-center justify-center shadow-2xl">
-              <BookOpen className="text-white" size={56} />
-            </div>
-            <motion.div
-              className="absolute -top-4 -right-4"
-              animate={{ rotate: 360 }}
-              transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-            >
-              <div className="w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center">
-                <Sparkles className="text-yellow-800" size={20} />
-              </div>
-            </motion.div>
-          </motion.div>
+  if (loading) {
+    return <LoadingSpinner />;
+  }
 
-          <motion.h1 
-            className="text-5xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent mb-4"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 0.8 }}
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center p-4">
+        <motion.div 
+          className="text-center bg-white rounded-2xl shadow-xl p-8 max-w-md"
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+        >
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Sparkles className="text-red-500" size={32} />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Connection Error</h2>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all"
           >
-            Sahayak AI
-          </motion.h1>
-          
-          <motion.p 
-            className="text-xl text-gray-600 mb-12 font-medium"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.8 }}
-          >
-            Empowering Teachers with AI
-          </motion.p>
-          
-          <motion.div 
-            className="flex items-center justify-center space-x-3"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1 }}
-          >
-            {[0, 1, 2].map((i) => (
-              <motion.div
-                key={i}
-                className="w-4 h-4 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full"
-                animate={{
-                  scale: [1, 1.5, 1],
-                  opacity: [1, 0.3, 1]
-                }}
-                transition={{
-                  duration: 1.2,
-                  repeat: Infinity,
-                  delay: i * 0.3
-                }}
-              />
-            ))}
-          </motion.div>
-        </div>
+            Try Again
+          </button>
+        </motion.div>
       </div>
     );
   }
@@ -136,7 +120,7 @@ export default function ClientWrapper() {
         sidebarOpen={sidebarOpen}
       />
       
-      <div className="flex">
+      <div className="relative flex">
         <Sidebar
           navigationItems={navigationItems}
           activeTab={activeTab}
@@ -145,36 +129,41 @@ export default function ClientWrapper() {
           onClose={() => setSidebarOpen(false)}
         />
         
-        <main className="flex-1 lg:ml-80 transition-all duration-300 min-h-screen">
-          <div className="p-4 lg:p-8">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeTab}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3 }}
-              >
-                {renderActiveComponent()}
-              </motion.div>
-            </AnimatePresence>
+        {/* Main Content - Removed the margin left issue */}
+        <main className="flex-1 w-full min-h-screen">
+          <div className="w-full px-4 py-6 lg:px-8 lg:py-8">
+            <div className="max-w-full mx-auto">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeTab}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="w-full"
+                >
+                  {renderActiveComponent()}
+                </motion.div>
+              </AnimatePresence>
+            </div>
           </div>
         </main>
       </div>
 
-      {/* Floating AI Assistant Button */}
+      {/* Floating Help Button */}
       <motion.div
         className="fixed bottom-8 right-8 z-50"
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
-        transition={{ delay: 1.5, type: "spring" }}
+        transition={{ delay: 1, type: "spring" }}
       >
         <motion.button 
           className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 rounded-full shadow-2xl hover:shadow-3xl transition-all duration-300"
           whileHover={{ scale: 1.1, rotate: 5 }}
           whileTap={{ scale: 0.9 }}
+          title="Need Help?"
         >
-          <Sparkles size={28} />
+          <Sparkles size={24} />
         </motion.button>
       </motion.div>
     </div>

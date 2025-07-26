@@ -1,3 +1,4 @@
+// src/components/layout/Sidebar.js
 'use client';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -32,16 +33,13 @@ export default function Sidebar({ navigationItems, activeTab, onTabChange, isOpe
         )}
       </AnimatePresence>
       
-      {/* Sidebar */}
+      {/* Sidebar - Fixed positioning only on large screens */}
       <motion.div 
         className={`
-          fixed left-0 top-0 h-screen w-80 bg-white shadow-2xl transform transition-all duration-300 z-50 border-r border-gray-200
-          ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:translate-x-0 lg:static lg:transform-none
+          fixed lg:relative top-0 left-0 h-screen w-80 bg-white shadow-2xl transform transition-all duration-300 z-50 border-r border-gray-200
+          ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
         initial={false}
-        animate={{ x: isOpen ? 0 : -320 }}
-        transition={{ type: "spring", damping: 25, stiffness: 200 }}
       >
         {/* Header */}
         <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
@@ -51,18 +49,18 @@ export default function Sidebar({ navigationItems, activeTab, onTabChange, isOpe
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
           >
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md">
-              <span className="text-white font-bold text-lg">S</span>
+            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md">
+              <span className="text-white font-bold text-xl">S</span>
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-800">Sahayak AI</h2>
-              <p className="text-xs text-gray-500">Teaching Assistant</p>
+              <h2 className="text-xl font-bold text-gray-800">Sahayak AI</h2>
+              <p className="text-sm text-gray-500">Teaching Assistant</p>
             </div>
           </motion.div>
         </div>
 
         {/* Navigation */}
-        <nav className="p-4 space-y-2 overflow-y-auto h-[calc(100vh-240px)] custom-scrollbar">
+        <nav className="p-4 space-y-2 overflow-y-auto h-[calc(100vh-200px)] custom-scrollbar">
           {navigationItems.map((item, index) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -72,7 +70,9 @@ export default function Sidebar({ navigationItems, activeTab, onTabChange, isOpe
                 key={item.id}
                 onClick={() => {
                   onTabChange(item.id);
-                  onClose();
+                  if (window.innerWidth < 1024) {
+                    onClose();
+                  }
                 }}
                 className={`
                   w-full flex items-center gap-4 px-4 py-4 rounded-xl text-left transition-all duration-300 group
