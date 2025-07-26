@@ -133,6 +133,25 @@ export default function GoogleADKWorkflow({ teacherId = 'default_teacher' }) {
       setIsInitializing(false);
     }
   };
+  const downloadWorkflowPackage = async (workflowId) => {
+  try {
+    const response = await fetch(`http://localhost:8080/api/agents/download-workflow-package/${workflowId}`);
+    
+    if (response.ok) {
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `google_ai_workflow_${workflowId}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    }
+  } catch (error) {
+    console.error('Download failed:', error);
+  }
+};
 
   const startWorkflowMonitoring = (workflowId) => {
     // Validate workflow ID
@@ -365,6 +384,39 @@ export default function GoogleADKWorkflow({ teacherId = 'default_teacher' }) {
     };
   }, []);
 
+  const downloadWorkflowResults = async (workflowId) => {
+  if (!workflowId) {
+    addMessage('error', 'No workflow ID available for download');
+    return;
+  }
+
+  try {
+    addMessage('system', 'Preparing download package...');
+    
+    const response = await fetch(`http://localhost:8080/api/agents/download-workflow-package/${workflowId}`);
+    
+    if (response.ok) {
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = `google_ai_workflow_${workflowId}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      addMessage('success', 'Google AI workflow package downloaded successfully!');
+    } else {
+      throw new Error(`Download failed: ${response.statusText}`);
+    }
+  } catch (error) {
+    console.error('❌ Download error:', error);
+    addMessage('error', `Download failed: ${error.message}`);
+  }
+};
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -536,36 +588,42 @@ export default function GoogleADKWorkflow({ teacherId = 'default_teacher' }) {
         </div>
       )}
 
-      {/* Results Display */}
-      {workflowState === 'completed' && workflowResults && (
-        <motion.div 
-          className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
-            <CheckCircle className="text-green-500" size={28} />
-            Google AI Workflow Completed Successfully!
-          </h2>
-          
-          <GoogleAIResults results={workflowResults} />
-          
-          <div className="flex gap-4 mt-6">
-            <button className="flex-1 bg-gradient-to-r from-blue-500 to-green-500 text-white py-3 px-6 rounded-xl font-semibold flex items-center justify-center gap-2 hover:shadow-lg transition-all">
-              <Download size={20} />
-              Download Google AI Results
-            </button>
-            
-            <button 
-              onClick={resetWorkflow}
-              className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 px-6 rounded-xl font-semibold flex items-center justify-center gap-2 hover:shadow-lg transition-all"
-            >
-              <Zap size={20} />
-              Start Another Workflow
-            </button>
-          </div>
-        </motion.div>
-      )}
+
+{/* Results Display */}
+{workflowState === 'completed' && workflowResults && (
+  <motion.div 
+    className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100"
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+  >
+    <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
+      <CheckCircle className="text-green-500" size={28} />
+      Google AI Workflow Completed Successfully!
+    </h2>
+    
+    <GoogleAIResults results={workflowResults} />
+    
+    <div className="flex gap-4 mt-6">
+      <button 
+        onClick={() => downloadWorkflowResults(currentWorkflowId || workflowIdRef.current)}
+        className="flex-1 bg-gradient-to-r from-blue-500 to-green-500 text-white py-3 px-6 rounded-xl font-semibold flex items-center justify-center gap-2 hover:shadow-lg transition-all"
+      >
+        <Download size={20} />
+        Download Google AI Results
+      </button>
+      
+      <button 
+        onClick={resetWorkflow}
+        className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 px-6 rounded-xl font-semibold flex items-center justify-center gap-2 hover:shadow-lg transition-all"
+      >
+        <Zap size={20} />
+        Start Another Workflow
+      </button>
+    </div>
+  </motion.div>
+)}
+
+
     </div>
   );
 }
@@ -735,35 +793,78 @@ function GoogleAIForm({ onSubmit, disabled = false }) {
   );
 }
 
+// Enhanced GoogleAIResults component - replace the existing one
 function GoogleAIResults({ results }) {
   const [activeTab, setActiveTab] = useState('overview');
+  const [expandedContent, setExpandedContent] = useState({});
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const toggleContentExpansion = (contentId) => {
+    setExpandedContent(prev => ({
+      ...prev,
+      [contentId]: !prev[contentId]
+    }));
+  };
+
+  const copyToClipboard = async (text, label) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      // You could add a toast notification here
+      console.log(`${label} copied to clipboard`);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
+
+  const printContent = (content, title) => {
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>${title}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+            h1, h2, h3 { color: #333; }
+            .content { white-space: pre-wrap; }
+            @media print { body { margin: 0; } }
+          </style>
+        </head>
+        <body>
+          <h1>${title}</h1>
+          <div class="content">${content}</div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  };
 
   return (
     <div className="space-y-6">
-      {/* Results Overview */}
+      {/* Results Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-blue-50 rounded-lg p-4 text-center">
+        <div className="bg-blue-50 rounded-lg p-4 text-center border border-blue-200">
           <div className="text-2xl font-bold text-blue-600">
             {Object.keys(results.content_package || {}).length}
           </div>
           <div className="text-sm text-gray-600">Content Items</div>
         </div>
         
-        <div className="bg-green-50 rounded-lg p-4 text-center">
+        <div className="bg-green-50 rounded-lg p-4 text-center border border-green-200">
           <div className="text-2xl font-bold text-green-600">
             {Object.keys(results.assessments || {}).length}
           </div>
           <div className="text-sm text-gray-600">Assessment Packages</div>
         </div>
         
-        <div className="bg-purple-50 rounded-lg p-4 text-center">
+        <div className="bg-purple-50 rounded-lg p-4 text-center border border-purple-200">
           <div className="text-2xl font-bold text-purple-600">
             {Object.keys(results.differentiated_materials || {}).length}
           </div>
           <div className="text-sm text-gray-600">Differentiated Materials</div>
         </div>
         
-        <div className="bg-orange-50 rounded-lg p-4 text-center">
+        <div className="bg-orange-50 rounded-lg p-4 text-center border border-orange-200">
           <div className="text-2xl font-bold text-orange-600">
             {Math.round((results.workflow_metadata?.quality_metrics?.overall_quality_score || 0.94) * 100)}%
           </div>
@@ -771,147 +872,557 @@ function GoogleAIResults({ results }) {
         </div>
       </div>
 
-      {/* Tabbed Results Display */}
-      <div className="bg-gray-50 rounded-xl">
-        <div className="flex border-b border-gray-200">
+      {/* Search Bar */}
+      <div className="bg-white rounded-lg p-4 border border-gray-200">
+        <div className="flex items-center gap-2">
+          <span className="text-gray-500">🔍</span>
+          <input
+            type="text"
+            placeholder="Search content, assessments, or materials..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+      </div>
+
+      {/* Enhanced Tabbed Display */}
+      <div className="bg-gray-50 rounded-xl border border-gray-200">
+        <div className="flex border-b border-gray-200 bg-white rounded-t-xl">
           {[
-            { id: 'overview', label: 'Overview', icon: Target },
-            { id: 'content', label: 'Content', icon: PenTool },
-            { id: 'insights', label: 'AI Insights', icon: Brain }
+            { id: 'overview', label: 'Overview', icon: Target, count: 1 },
+            { id: 'curriculum', label: 'Curriculum Plan', icon: Brain, count: 1 },
+            { id: 'content', label: 'Stories & Worksheets', icon: PenTool, count: Object.keys(results.content_package || {}).length },
+            { id: 'assessments', label: 'Assessments', icon: CheckCircle, count: Object.keys(results.assessments || {}).length },
+            { id: 'materials', label: 'Differentiated Materials', icon: Settings, count: Object.keys(results.differentiated_materials || {}).length },
+            { id: 'insights', label: 'AI Insights', icon: Sparkles, count: 1 }
           ].map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 px-6 py-3 font-medium text-sm transition-colors ${
+              className={`flex-1 px-4 py-3 font-medium text-sm transition-colors relative ${
                 activeTab === tab.id
                   ? 'bg-white text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-600 hover:text-gray-800'
+                  : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
               }`}
             >
-              <tab.icon size={16} className="inline mr-2" />
-              {tab.label}
+              <div className="flex items-center justify-center gap-2">
+                <tab.icon size={16} />
+                <span className="hidden sm:inline">{tab.label}</span>
+                {tab.count > 0 && (
+                  <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                    {tab.count}
+                  </span>
+                )}
+              </div>
             </button>
           ))}
         </div>
 
-        <div className="p-6 max-h-96 overflow-y-auto">
+        <div className="p-6 max-h-[800px] overflow-y-auto">
+          {/* Overview Tab */}
           {activeTab === 'overview' && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Google AI Workflow Summary</h3>
-              <div className="bg-white rounded-lg p-4 border">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium">Framework:</span> Google Cloud AI Platform
+            <div className="space-y-6">
+              <h3 className="text-xl font-bold text-gray-900">Google AI Workflow Summary</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
+                  <h4 className="font-semibold text-lg mb-4 text-gray-800">Workflow Details</h4>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Framework:</span>
+                      <span className="font-medium">Google Cloud AI Platform</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Status:</span>
+                      <span className="font-medium text-green-600">Completed Successfully</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Language:</span>
+                      <span className="font-medium">{results.workflow_metadata?.language || 'Hindi'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Subjects:</span>
+                      <span className="font-medium">{results.workflow_metadata?.subjects_covered?.join(', ') || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Grade Levels:</span>
+                      <span className="font-medium">{results.workflow_metadata?.grade_levels_covered?.join(', ') || 'N/A'}</span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="font-medium">Status:</span> Completed Successfully
+                </div>
+
+                <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
+                  <h4 className="font-semibold text-lg mb-4 text-gray-800">Quality Metrics</h4>
+                  <div className="space-y-3">
+                    {[
+                      { label: 'Overall Quality', value: results.workflow_metadata?.quality_metrics?.overall_quality_score || 0.94, color: 'blue' },
+                      { label: 'Content Quality', value: results.workflow_metadata?.quality_metrics?.content_quality || 0.95, color: 'green' },
+                      { label: 'Assessment Quality', value: results.workflow_metadata?.quality_metrics?.assessment_quality || 0.93, color: 'purple' },
+                      { label: 'Curriculum Alignment', value: results.workflow_metadata?.quality_metrics?.curriculum_alignment || 0.96, color: 'orange' }
+                    ].map(metric => (
+                      <div key={metric.label} className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">{metric.label}:</span>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-20 h-2 bg-gray-200 rounded-full`}>
+                            <div 
+                              className={`h-2 bg-${metric.color}-500 rounded-full`} 
+                              style={{ width: `${metric.value * 100}%` }}
+                            />
+                          </div>
+                          <span className="text-sm font-medium">{Math.round(metric.value * 100)}%</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div>
-                    <span className="font-medium">Content Items:</span> {Object.keys(results.content_package || {}).length}
-                  </div>
-                  <div>
-                    <span className="font-medium">Assessments:</span> {Object.keys(results.assessments || {}).length}
-                  </div>
-                  <div>
-                    <span className="font-medium">Language:</span> {results.workflow_metadata?.language || 'Hindi'}
-                  </div>
-                  <div>
-                    <span className="font-medium">Quality Score:</span> {Math.round((results.workflow_metadata?.quality_metrics?.overall_quality_score || 0.94) * 100)}%
-                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
+                <h4 className="font-semibold text-lg mb-4 text-gray-800">Learning Goals</h4>
+                <p className="text-gray-700 leading-relaxed">
+                  {results.workflow_metadata?.learning_goals || 'No specific learning goals provided.'}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Curriculum Plan Tab */}
+          {activeTab === 'curriculum' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-gray-900">Curriculum Analysis & Plan</h3>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => copyToClipboard(results.curriculum_analysis, 'Curriculum Plan')}
+                    className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition-colors"
+                  >
+                    📋 Copy
+                  </button>
+                  <button
+                    onClick={() => printContent(results.curriculum_analysis, 'Curriculum Plan')}
+                    className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600 transition-colors"
+                  >
+                    🖨️ Print
+                  </button>
+                </div>
+              </div>
+              
+              <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
+                <div className="prose max-w-none">
+                  <pre className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800 font-sans">
+                    {results.curriculum_analysis || 'No curriculum analysis available.'}
+                  </pre>
                 </div>
               </div>
             </div>
           )}
 
+          {/* Content Tab - Stories & Worksheets */}
           {activeTab === 'content' && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Generated Content by Google AI</h3>
-              {Object.entries(results.content_package || {}).map(([key, content]) => (
-                <div key={key} className="bg-white rounded-lg p-4 border">
-                  <h4 className="font-medium mb-2">{content.subject} - Grade {content.grade_level}</h4>
-                  <div className="grid grid-cols-2 gap-4 mb-2">
-                    <div className="text-sm">
-                      <span className="font-medium">Story:</span> Available
+            <div className="space-y-6">
+              <h3 className="text-xl font-bold text-gray-900">Stories & Worksheets</h3>
+              
+              <div className="grid gap-6">
+                {Object.entries(results.content_package || {}).map(([contentKey, content]) => (
+                  <div key={contentKey} className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                    <div className="bg-gradient-to-r from-blue-50 to-green-50 p-4 border-b border-gray-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-lg font-semibold text-gray-800">
+                            {content.subject} - Grade {content.grade_level}
+                          </h4>
+                          <p className="text-sm text-gray-600">
+                            Language: {content.language} | Generated by Google AI
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                            Quality: {Math.round((content.content_quality_score || 0.95) * 100)}%
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-sm">
-                      <span className="font-medium">Worksheet:</span> Available
+                    
+                    <div className="p-6 space-y-6">
+                      {/* Story Section */}
+                      <div className="border rounded-lg overflow-hidden">
+                        <div 
+                          className="bg-blue-50 p-4 cursor-pointer flex items-center justify-between border-b"
+                          onClick={() => toggleContentExpansion(`${contentKey}_story`)}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl">📖</span>
+                            <h5 className="font-semibold text-gray-800">Educational Story</h5>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                copyToClipboard(content.story, `${content.subject} Grade ${content.grade_level} Story`);
+                              }}
+                              className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
+                            >
+                              📋 Copy
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                printContent(content.story, `${content.subject} Grade ${content.grade_level} Story`);
+                              }}
+                              className="px-2 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600"
+                            >
+                              🖨️ Print
+                            </button>
+                            <span className="text-gray-500">
+                              {expandedContent[`${contentKey}_story`] ? '▼' : '▶'}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        {expandedContent[`${contentKey}_story`] && (
+                          <div className="p-4 bg-white">
+                            <div className="prose max-w-none">
+                              <pre className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800 font-sans">
+                                {content.story || 'No story content available.'}
+                              </pre>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Worksheet Section */}
+                      <div className="border rounded-lg overflow-hidden">
+                        <div 
+                          className="bg-green-50 p-4 cursor-pointer flex items-center justify-between border-b"
+                          onClick={() => toggleContentExpansion(`${contentKey}_worksheet`)}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl">📝</span>
+                            <h5 className="font-semibold text-gray-800">Interactive Worksheet</h5>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                copyToClipboard(content.worksheet, `${content.subject} Grade ${content.grade_level} Worksheet`);
+                              }}
+                              className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
+                            >
+                              📋 Copy
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                printContent(content.worksheet, `${content.subject} Grade ${content.grade_level} Worksheet`);
+                              }}
+                              className="px-2 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600"
+                            >
+                              🖨️ Print
+                            </button>
+                            <span className="text-gray-500">
+                              {expandedContent[`${contentKey}_worksheet`] ? '▼' : '▶'}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        {expandedContent[`${contentKey}_worksheet`] && (
+                          <div className="p-4 bg-white">
+                            <div className="prose max-w-none">
+                              <pre className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800 font-sans">
+                                {content.worksheet || 'No worksheet content available.'}
+                              </pre>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <div className="bg-gray-50 rounded p-3 max-h-32 overflow-y-auto">
-                    <p className="text-sm">{String(content.story || content.worksheet || 'Content generated by Google AI').substring(0, 200)}...</p>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
 
+          {/* Assessments Tab */}
+          {activeTab === 'assessments' && (
+            <div className="space-y-6">
+              <h3 className="text-xl font-bold text-gray-900">Assessment Packages</h3>
+              
+              <div className="grid gap-6">
+                {Object.entries(results.assessments || {}).map(([subject, assessment]) => (
+                  <div key={subject} className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                    <div className="bg-gradient-to-r from-orange-50 to-red-50 p-4 border-b border-gray-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-lg font-semibold text-gray-800">
+                            {subject} Assessment Package
+                          </h4>
+                          <p className="text-sm text-gray-600">
+                            Grades: {assessment.grade_levels?.join(', ')} | Language: {assessment.language}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded text-xs">
+                            Quality: {Math.round((assessment.assessment_quality_score || 0.93) * 100)}%
+                          </span>
+                          <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">
+                            Alignment: {Math.round((assessment.alignment_score || 0.96) * 100)}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="p-6">
+                      <div className="border rounded-lg overflow-hidden">
+                        <div 
+                          className="bg-orange-50 p-4 cursor-pointer flex items-center justify-between border-b"
+                          onClick={() => toggleContentExpansion(`assessment_${subject}`)}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl">📊</span>
+                            <h5 className="font-semibold text-gray-800">Complete Assessment Package</h5>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                copyToClipboard(assessment.assessment_package, `${subject} Assessment Package`);
+                              }}
+                              className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
+                            >
+                              📋 Copy
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                printContent(assessment.assessment_package, `${subject} Assessment Package`);
+                              }}
+                              className="px-2 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600"
+                            >
+                              🖨️ Print
+                            </button>
+                            <span className="text-gray-500">
+                              {expandedContent[`assessment_${subject}`] ? '▼' : '▶'}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        {expandedContent[`assessment_${subject}`] && (
+                          <div className="p-4 bg-white">
+                            <div className="prose max-w-none">
+                              <pre className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800 font-sans">
+                                {assessment.assessment_package || 'No assessment content available.'}
+                              </pre>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Differentiated Materials Tab */}
+          {activeTab === 'materials' && (
+            <div className="space-y-6">
+              <h3 className="text-xl font-bold text-gray-900">Differentiated Materials</h3>
+              
+              <div className="grid gap-6">
+                {Object.entries(results.differentiated_materials || {}).map(([materialKey, material]) => (
+                  <div key={materialKey} className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 border-b border-gray-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-lg font-semibold text-gray-800">
+                            {material.original_content?.subject} - Grade {material.original_content?.grade_level} Adaptations
+                          </h4>
+                          <p className="text-sm text-gray-600">
+                            Levels: {material.adaptation_levels?.join(', ')} | 
+                            Features: Accessibility, Learning Styles, Cultural Sensitivity
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs">
+                            Quality: {Math.round((material.adaptation_quality_score || 0.91) * 100)}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="p-6">
+                      <div className="border rounded-lg overflow-hidden">
+                        <div 
+                          className="bg-purple-50 p-4 cursor-pointer flex items-center justify-between border-b"
+                          onClick={() => toggleContentExpansion(`material_${materialKey}`)}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl">🔧</span>
+                            <h5 className="font-semibold text-gray-800">Adaptation Package</h5>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                copyToClipboard(material.adaptations, `${materialKey} Adaptations`);
+                              }}
+                              className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
+                            >
+                              📋 Copy
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                printContent(material.adaptations, `${materialKey} Adaptations`);
+                              }}
+                              className="px-2 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600"
+                            >
+                              🖨️ Print
+                            </button>
+                            <span className="text-gray-500">
+                              {expandedContent[`material_${materialKey}`] ? '▼' : '▶'}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        {expandedContent[`material_${materialKey}`] && (
+                          <div className="p-4 bg-white">
+                            <div className="prose max-w-none">
+                              <pre className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800 font-sans">
+                                {material.adaptations || 'No adaptation content available.'}
+                              </pre>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* AI Insights Tab */}
           {activeTab === 'insights' && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Google AI Insights</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white rounded-lg p-4 border">
-                  <h4 className="font-medium mb-2 flex items-center gap-2">
-                    <Star size={16} />
+            <div className="space-y-6">
+              <h3 className="text-xl font-bold text-gray-900">Google AI Insights & Analytics</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
+                  <h4 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                    <Star size={20} className="text-yellow-500" />
                     Quality Metrics
                   </h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span>Content Quality:</span>
-                      <span className="font-medium">
-                        {Math.round((results.workflow_metadata?.quality_metrics?.content_quality || 0.95) * 100)}%
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Assessment Quality:</span>
-                      <span className="font-medium">
-                        {Math.round((results.workflow_metadata?.quality_metrics?.assessment_quality || 0.93) * 100)}%
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Adaptation Quality:</span>
-                      <span className="font-medium">
-                        {Math.round((results.workflow_metadata?.quality_metrics?.adaptation_quality || 0.91) * 100)}%
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Curriculum Alignment:</span>
-                      <span className="font-medium">
-                        {Math.round((results.workflow_metadata?.quality_metrics?.curriculum_alignment || 0.96) * 100)}%
-                      </span>
-                    </div>
+                  <div className="space-y-4">
+                    {[
+                      { 
+                        label: 'Content Quality', 
+                        value: results.workflow_metadata?.quality_metrics?.content_quality || 0.95,
+                        description: 'Engagement, clarity, and educational value'
+                      },
+                      { 
+                        label: 'Assessment Quality', 
+                        value: results.workflow_metadata?.quality_metrics?.assessment_quality || 0.93,
+                        description: 'Validity, reliability, and alignment'
+                      },
+                      { 
+                        label: 'Adaptation Quality', 
+                        value: results.workflow_metadata?.quality_metrics?.adaptation_quality || 0.91,
+                        description: 'Differentiation and accessibility'
+                      },
+                      { 
+                        label: 'Curriculum Alignment', 
+                        value: results.workflow_metadata?.quality_metrics?.curriculum_alignment || 0.96,
+                        description: 'Standards compliance and scope'
+                      }
+                    ].map(metric => (
+                      <div key={metric.label} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-gray-700">{metric.label}</span>
+                          <span className="font-bold text-lg">{Math.round(metric.value * 100)}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full transition-all duration-500" 
+                            style={{ width: `${metric.value * 100}%` }}
+                          />
+                        </div>
+                        <p className="text-xs text-gray-500">{metric.description}</p>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
-                <div className="bg-white rounded-lg p-4 border">
-                  <h4 className="font-medium mb-2 flex items-center gap-2">
-                    <Globe size={16} />
-                    AI Insights
+                <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
+                  <h4 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                    <Globe size={20} className="text-blue-500" />
+                    AI Predictions & Insights
                   </h4>
-                  <div className="space-y-2 text-sm text-gray-600">
-                    <div className="flex justify-between">
-                      <span>Engagement Prediction:</span>
-                      <span className="font-medium text-green-600">
-                        {results.workflow_metadata?.ai_insights?.engagement_prediction || 'High'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Comprehension Level:</span>
-                      <span className="font-medium text-blue-600">
-                        {results.workflow_metadata?.ai_insights?.comprehension_level || 'Optimal'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Cultural Relevance:</span>
-                      <span className="font-medium text-purple-600">
-                        {results.workflow_metadata?.ai_insights?.cultural_relevance || 'Excellent'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Accessibility Score:</span>
-                      <span className="font-medium text-orange-600">
-                        {results.workflow_metadata?.ai_insights?.accessibility_score || 'Full Compliance'}
-                      </span>
-                    </div>
+                  <div className="space-y-4">
+                    {[
+                      {
+                        label: 'Engagement Prediction',
+                        value: results.workflow_metadata?.ai_insights?.engagement_prediction || 'High',
+                        color: 'green',
+                        icon: '🎯'
+                      },
+                      {
+                        label: 'Comprehension Level',
+                        value: results.workflow_metadata?.ai_insights?.comprehension_level || 'Optimal',
+                        color: 'blue',
+                        icon: '🧠'
+                      },
+                      {
+                        label: 'Cultural Relevance',
+                        value: results.workflow_metadata?.ai_insights?.cultural_relevance || 'Excellent',
+                        color: 'purple',
+                        icon: '🌍'
+                      },
+                      {
+                        label: 'Accessibility Score',
+                        value: results.workflow_metadata?.ai_insights?.accessibility_score || 'Full Compliance',
+                        color: 'orange',
+                        icon: '♿'
+                      }
+                    ].map(insight => (
+                      <div key={insight.label} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xl">{insight.icon}</span>
+                          <span className="font-medium text-gray-700">{insight.label}</span>
+                        </div>
+                        <span className={`font-semibold text-${insight.color}-600 px-3 py-1 bg-${insight.color}-100 rounded-full text-sm`}>
+                          {insight.value}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
+                <h4 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                  <Brain size={20} className="text-purple-500" />
+                  Implementation Recommendations
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <h5 className="font-medium text-gray-800">Classroom Implementation:</h5>
+                    <ul className="text-sm text-gray-600 space-y-1">
+                      <li>• Start with storytelling sessions to build engagement</li>
+                      <li>• Use worksheets for individual practice and assessment</li>
+                      <li>• Implement differentiated materials based on student needs</li>
+                      <li>• Regular assessment using provided evaluation tools</li>
+                    </ul>
+                  </div>
+                  <div className="space-y-3">
+                    <h5 className="font-medium text-gray-800">Resource Optimization:</h5>
+                    <ul className="text-sm text-gray-600 space-y-1">
+                      <li>• Print materials in advance for smoother sessions</li>
+                      <li>• Adapt content based on available classroom resources</li>
+                      <li>• Use assessment rubrics for consistent evaluation</li>
+                      <li>• Share adapted materials with special needs coordinators</li>
+                    </ul>
                   </div>
                 </div>
               </div>
@@ -919,8 +1430,57 @@ function GoogleAIResults({ results }) {
           )}
         </div>
       </div>
+
+      {/* Action Buttons */}
+      <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
+        <div className="flex flex-wrap gap-4 justify-center">
+          <button
+            onClick={() => {
+              const allContent = [
+                results.curriculum_analysis,
+                ...Object.values(results.content_package || {}).map(c => `${c.story}\n\n${c.worksheet}`),
+                ...Object.values(results.assessments || {}).map(a => a.assessment_package),
+                ...Object.values(results.differentiated_materials || {}).map(m => m.adaptations)
+              ].join('\n\n===================\n\n');
+              copyToClipboard(allContent, 'Complete Workflow Results');
+            }}
+            className="px-6 py-3 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600 transition-colors flex items-center gap-2"
+          >
+            📋 Copy All Content
+          </button>
+          
+          <button
+            onClick={() => {
+              const allContent = [
+                '=== CURRICULUM PLAN ===\n' + results.curriculum_analysis,
+                '=== CONTENT PACKAGE ===\n' + Object.values(results.content_package || {}).map(c => `${c.story}\n\n${c.worksheet}`).join('\n\n'),
+                '=== ASSESSMENTS ===\n' + Object.values(results.assessments || {}).map(a => a.assessment_package).join('\n\n'),
+                '=== DIFFERENTIATED MATERIALS ===\n' + Object.values(results.differentiated_materials || {}).map(m => m.adaptations).join('\n\n')
+              ].join('\n\n');
+              printContent(allContent, 'Complete Google AI Workflow Results');
+            }}
+            className="px-6 py-3 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 transition-colors flex items-center gap-2"
+          >
+            🖨️ Print All Content
+          </button>
+
+          <button
+            onClick={() => {
+              const dataStr = JSON.stringify(results, null, 2);
+              const dataBlob = new Blob([dataStr], {type: 'application/json'});
+              const url = URL.createObjectURL(dataBlob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = `google_ai_workflow_${Date.now()}.json`;
+              link.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="px-6 py-3 bg-purple-500 text-white rounded-lg font-semibold hover:bg-purple-600 transition-colors flex items-center gap-2"
+          >
+            💾 Export as JSON
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
-
-// export default GoogleADKWorkflow;
