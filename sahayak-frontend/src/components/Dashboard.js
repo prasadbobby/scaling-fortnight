@@ -41,6 +41,25 @@ export default function Dashboard({ teacherId }) {
     }
   ];
 
+  const getIconBgClass = (color) => {
+    const colorMap = {
+      blue: 'bg-blue-500',
+      green: 'bg-green-500',
+      purple: 'bg-purple-500',
+      orange: 'bg-orange-500'
+    };
+    return colorMap[color] || 'bg-gray-500';
+  };
+
+  const getHoverColor = (color) => {
+    const hoverMap = {
+      blue: 'hover:border-blue-400 hover:bg-blue-50',
+      green: 'hover:border-green-400 hover:bg-green-50',
+      purple: 'hover:border-purple-400 hover:bg-purple-50'
+    };
+    return hoverMap[color] || 'hover:border-gray-400 hover:bg-gray-50';
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -61,7 +80,7 @@ export default function Dashboard({ teacherId }) {
                   <p className="text-2xl font-bold text-gray-900 mb-1">{stat.value}</p>
                   <p className="text-sm text-green-600">{stat.change} from last week</p>
                 </div>
-                <div className={`w-12 h-12 bg-${stat.color}-500 rounded-xl flex items-center justify-center`}>
+                <div className={`w-12 h-12 ${getIconBgClass(stat.color)} rounded-xl flex items-center justify-center`}>
                   <Icon className="text-white" size={24} />
                 </div>
               </div>
@@ -74,19 +93,19 @@ export default function Dashboard({ teacherId }) {
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-8">
         <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="p-6 border-2 border-dashed border-gray-300 rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-colors group">
+          <button className={`p-6 border-2 border-dashed border-gray-300 rounded-xl transition-colors group ${getHoverColor('blue')}`}>
             <BookOpen className="mx-auto mb-3 text-blue-500 group-hover:scale-110 transition-transform" size={32} />
             <h3 className="font-medium text-gray-900 mb-1">Create Story</h3>
             <p className="text-sm text-gray-600">Generate educational stories</p>
           </button>
           
-          <button className="p-6 border-2 border-dashed border-gray-300 rounded-xl hover:border-green-400 hover:bg-green-50 transition-colors group">
+          <button className={`p-6 border-2 border-dashed border-gray-300 rounded-xl transition-colors group ${getHoverColor('green')}`}>
             <Target className="mx-auto mb-3 text-green-500 group-hover:scale-110 transition-transform" size={32} />
             <h3 className="font-medium text-gray-900 mb-1">Plan Lesson</h3>
             <p className="text-sm text-gray-600">Create lesson plans</p>
           </button>
           
-          <button className="p-6 border-2 border-dashed border-gray-300 rounded-xl hover:border-purple-400 hover:bg-purple-50 transition-colors group">
+          <button className={`p-6 border-2 border-dashed border-gray-300 rounded-xl transition-colors group ${getHoverColor('purple')}`}>
             <Award className="mx-auto mb-3 text-purple-500 group-hover:scale-110 transition-transform" size={32} />
             <h3 className="font-medium text-gray-900 mb-1">Assess Students</h3>
             <p className="text-sm text-gray-600">Evaluate student progress</p>
@@ -105,7 +124,7 @@ export default function Dashboard({ teacherId }) {
             { action: 'Created lesson plan for Science Week', time: '2 days ago', color: 'orange' }
           ].map((activity, index) => (
             <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-              <div className={`w-3 h-3 bg-${activity.color}-500 rounded-full`}></div>
+              <div className={`w-3 h-3 ${getIconBgClass(activity.color)} rounded-full`}></div>
               <div className="flex-1">
                 <p className="text-sm font-medium text-gray-900">{activity.action}</p>
                 <p className="text-xs text-gray-500">{activity.time}</p>
