@@ -3,7 +3,7 @@ from .base_agent import BaseAgent, AgentMessage
 from ..services.gemini_service import GeminiService
 from typing import Dict, List, Any
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 class AssessmentCreatorAgent(BaseAgent):
     def __init__(self, gemini_service: GeminiService):
@@ -34,7 +34,7 @@ class AssessmentCreatorAgent(BaseAgent):
             sender=self.agent_id,
             recipient=message.sender,
             content=result,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             message_type='response'
         )
     
@@ -99,7 +99,7 @@ class AssessmentCreatorAgent(BaseAgent):
                 'subjects_covered': subjects,
                 'grade_levels_covered': grade_levels,
                 'assessment_creator': self.agent_id,
-                'creation_time': datetime.utcnow().isoformat()
+                'creation_time': datetime.now(timezone.utc).isoformat()
             }
         }
     

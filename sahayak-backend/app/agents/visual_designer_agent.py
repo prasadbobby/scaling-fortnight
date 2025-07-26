@@ -4,7 +4,7 @@ from ..services.gemini_service import GeminiService
 from ..services.imagen_service import ImagenService
 from typing import Dict, List, Any, Optional
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 import base64
 
 class VisualDesignerAgent(BaseAgent):
@@ -37,7 +37,7 @@ class VisualDesignerAgent(BaseAgent):
             sender=self.agent_id,
             recipient=message.sender,
             content=result,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             message_type='response'
         )
     
@@ -102,7 +102,7 @@ class VisualDesignerAgent(BaseAgent):
             },
             'metadata': {
                 'created_by': self.agent_id,
-                'creation_time': datetime.utcnow().isoformat(),
+                'creation_time': datetime.now(timezone.utc).isoformat(),
                 'imagen_service_used': self.imagen.is_available()
             }
         }

@@ -3,7 +3,7 @@ from .base_agent import BaseAgent, AgentMessage
 from ..services.gemini_service import GeminiService
 from typing import Dict, List, Any
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 class MaterialDifferentiatorAgent(BaseAgent):
     def __init__(self, gemini_service: GeminiService):
@@ -25,6 +25,18 @@ class MaterialDifferentiatorAgent(BaseAgent):
         
         if task == 'create_differentiated_materials':
             result = await self.create_differentiated_materials(message.content['input'])
+        elif task == 'differentiate_textbook_page':
+            result = await self.differentiate_textbook_page(
+                message.content['input']['image_data'],
+                message.content['input']['grade_levels'],
+                message.content['input']['language']
+            )
+        elif task == 'create_multi_level_assessment':
+            result = await self.create_multi_level_assessment(
+                message.content['input']['topic'],
+                message.content['input']['grade_levels'],
+                message.content['input']['language']
+            )
         else:
             result = {'error': f'Unknown task: {task}'}
         
@@ -33,7 +45,7 @@ class MaterialDifferentiatorAgent(BaseAgent):
             sender=self.agent_id,
             recipient=message.sender,
             content=result,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             message_type='response'
         )
     
@@ -97,6 +109,106 @@ class MaterialDifferentiatorAgent(BaseAgent):
                 'quality_score': 0.88
             }
         }
+    
+    def differentiate_textbook_page(self, image_data: bytes, grade_levels: List[int], language: str) -> Dict[str, Any]:
+        """Differentiate textbook page for different grade levels (legacy method for backward compatibility)"""
+        
+        # Use Gemini to analyze the image and create differentiated content
+        try:
+            # Analyze the textbook page
+            analysis_prompt = f"""
+            Analyze this textbook page and create differentiated materials for grades {grade_levels} in {language}.
+            
+            For each grade level, create:
+            1. A simplified worksheet based on the content
+            2. Key vocabulary appropriate for that grade
+            3. Practice exercises at the right difficulty level
+            4. Learning objectives for that grade
+            
+            Make sure the content is culturally relevant and pedagogically sound.
+            """
+            
+            # This would use the vision model to analyze the image
+            analysis_result = self.gemini.analyze_image_and_generate(image_data, analysis_prompt)
+            
+            # Create differentiated materials for each grade
+            differentiated_materials = {}
+            for grade in grade_levels:
+                grade_prompt = f"""
+                Based on the textbook analysis, create a worksheet for Grade {grade} in {language}:
+                
+                Analysis: {analysis_result}
+                
+                Create appropriate content for Grade {grade} including:
+                - Simplified explanations
+                - Age-appropriate vocabulary
+                - Practice exercises
+                - Assessment questions
+                
+                Worksheet for Grade {grade}:
+                """
+                
+                worksheet_content = self.gemini.generate_content(grade_prompt, language)
+                
+                differentiated_materials[grade] = {
+                    'worksheet': worksheet_content,
+                    'difficulty_level': self.get_difficulty_level(grade),
+                    'estimated_time': f"{self.get_estimated_time(grade)} minutes"
+                }
+            
+            return {
+                'success': True,
+                'differentiated_materials': differentiated_materials,
+                'source_analysis': analysis_result,
+                'grade_levels': grade_levels,
+                'language': language
+            }
+            
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e),
+                'message': 'Failed to process textbook page'
+            }
+    
+    def create_multi_level_assessment(self, topic: str, grade_levels: List[int], language: str) -> Dict[str, Any]:
+        """Create assessments for multiple grade levels (legacy method for backward compatibility)"""
+        
+        try:
+            assessments = {}
+            
+            for grade in grade_levels:
+                assessment_prompt = f"""
+                Create an assessment for {topic} suitable for Grade {grade} students in {language}.
+                
+                Include:
+                1. 5 multiple choice questions
+                2. 3 short answer questions
+                3. 1 practical/application question
+                4. Answer key with explanations
+                
+                Make it age-appropriate and culturally relevant.
+                
+                Assessment:
+                """
+                
+                assessment_content = self.gemini.generate_content(assessment_prompt, language)
+                assessments[grade] = assessment_content
+            
+            return {
+                'success': True,
+                'assessments': assessments,
+                'topic': topic,
+                'grade_levels': grade_levels,
+                'language': language
+            }
+            
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e),
+                'message': 'Failed to create assessments'
+            }
     
     async def create_grade_variations(self, content: str, subject: str, base_grade: int, content_type: str) -> Dict[str, str]:
         """Create variations for different difficulty levels"""
@@ -271,3 +383,25 @@ class MaterialDifferentiatorAgent(BaseAgent):
         learning_styles['kinesthetic'] = self.gemini.generate_content(kinesthetic_prompt)
         
         return learning_styles
+    
+    def get_difficulty_level(self, grade: int) -> str:
+        """Get difficulty level for grade"""
+        if grade <= 3:
+            return "Basic"
+        elif grade <= 6:
+            return "Intermediate"
+        elif grade <= 9:
+            return "Advanced"
+        else:
+            return "Expert"
+    
+    def get_estimated_time(self, grade: int) -> int:
+        """Get estimated time for grade"""
+        if grade <= 3:
+            return 20
+        elif grade <= 6:
+            return 30
+        elif grade <= 9:
+            return 45
+        else:
+            return 60

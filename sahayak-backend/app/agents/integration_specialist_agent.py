@@ -3,7 +3,7 @@ from .base_agent import BaseAgent, AgentMessage
 from ..services.gemini_service import GeminiService
 from typing import Dict, List, Any
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 class IntegrationSpecialistAgent(BaseAgent):
     def __init__(self, gemini_service: GeminiService):
@@ -34,7 +34,7 @@ class IntegrationSpecialistAgent(BaseAgent):
             sender=self.agent_id,
             recipient=message.sender,
             content=result,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             message_type='response'
         )
     
@@ -90,7 +90,7 @@ class IntegrationSpecialistAgent(BaseAgent):
             'quality_assurance_report': await self.create_quality_assurance_report(optimized_package),
             'metadata': {
                 'integrated_by': self.agent_id,
-                'integration_time': datetime.utcnow().isoformat(),
+                'integration_time': datetime.now(timezone.utc).isoformat(),
                 'package_version': '1.0'
             }
         }
@@ -319,7 +319,7 @@ class IntegrationSpecialistAgent(BaseAgent):
         # Add optimization metadata
         optimized_package['optimization_applied'] = {
             'optimization_recommendations': optimizations,
-            'optimization_timestamp': datetime.utcnow().isoformat(),
+            'optimization_timestamp': datetime.now(timezone.utc).isoformat(),
             'optimization_version': '1.0'
         }
         

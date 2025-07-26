@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, current_app, send_file
 import io
 import zipfile
 import json
+from datetime import datetime, timedelta  # Add this import
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.utils import ImageReader

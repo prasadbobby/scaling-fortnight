@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { FolderOpen, Search, Filter, Download, Eye, Heart, Share2, Trash2 } from 'lucide-react';
-import apiService from '@/services/api';
+import api from '@/lib/api';
 
 export default function ContentLibrary({ teacherId }) {
   const [content, setContent] = useState([]);
@@ -23,22 +23,22 @@ export default function ContentLibrary({ teacherId }) {
     filterContent();
   }, [content, searchTerm, selectedType, selectedLanguage]);
 
-  const fetchContent = async () => {
-    try {
-      setLoading(true);
-      const response = await apiService.get(`/content/teacher-content/${teacherId}`, {
-        limit: 100
-      });
-      
-      if (response.success) {
-        setContent(response.data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch content:', error);
-    } finally {
-      setLoading(false);
+const fetchContent = async () => {
+  try {
+    setLoading(true);
+    const response = await api.getContentLibrary(teacherId, {
+      limit: 100
+    });
+    
+    if (response.success) {
+      setContent(response.data);
     }
-  };
+  } catch (error) {
+    console.error('Failed to fetch content:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const filterContent = () => {
     let filtered = [...content];

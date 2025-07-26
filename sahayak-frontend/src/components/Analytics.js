@@ -1,7 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { BarChart3, TrendingUp, Users, Clock, Award, BookOpen } from 'lucide-react';
-import apiService from '@/services/api';
+
+import api from '@/lib/api';
+
 
 export default function Analytics({ teacherId }) {
   const [dashboardData, setDashboardData] = useState(null);
@@ -12,22 +14,22 @@ export default function Analytics({ teacherId }) {
     fetchAnalytics();
   }, [teacherId, timeRange]);
 
-  const fetchAnalytics = async () => {
-    try {
-      setLoading(true);
-      const response = await apiService.get(`/analytics/teacher-dashboard/${teacherId}`, {
-        days: timeRange
-      });
-      
-      if (response.success) {
-        setDashboardData(response.data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch analytics:', error);
-    } finally {
-      setLoading(false);
+const fetchAnalytics = async () => {
+  try {
+    setLoading(true);
+    const response = await api.getTeacherAnalytics(teacherId, {
+      days: timeRange
+    });
+    
+    if (response.success) {
+      setDashboardData(response.data);
     }
-  };
+  } catch (error) {
+    console.error('Failed to fetch analytics:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   if (loading) {
     return (

@@ -1,7 +1,7 @@
 'use client';
 import { useState, useRef } from 'react';
 import { Mic, MicOff, Play, Pause, Volume2, FileAudio, Award } from 'lucide-react';
-import apiService from '@/services/api';
+import api from '@/lib/api';
 
 export default function SpeechAssessment({ teacherId }) {
   const [isRecording, setIsRecording] = useState(false);
@@ -80,62 +80,61 @@ export default function SpeechAssessment({ teacherId }) {
     }
   };
 
-  const assessReading = async () => {
-    if (!audioBlob || !assessmentText) {
-      alert('Please record audio and enter expected text');
-      return;
-    }
+const assessReading = async () => {
+  if (!audioBlob || !assessmentText) {
+    alert('Please record audio and enter expected text');
+    return;
+  }
 
-    setLoading(true);
-    try {
-      // Convert blob to base64
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64Audio = reader.result.split(',')[1];
-        
-        const response = await apiService.post('/speech/assess-reading', {
-          audio_data: base64Audio,
-          expected_text: assessmentText,
-          language_code: language,
-          student_id: 'student_001' // Mock student ID
-        });
-
-        if (response.success) {
-          setResults(response.data);
-        }
-      };
-      reader.readAsDataURL(audioBlob);
-    } catch (error) {
-      console.error('Assessment failed:', error);
-      alert('Assessment failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const generateTTS = async () => {
-    if (!assessmentText) {
-      alert('Please enter text to convert to speech');
-      return;
-    }
-
-    try {
-      const response = await apiService.post('/speech/text-to-speech', {
-        text: assessmentText,
-        language_code: language
+  setLoading(true);
+  try {
+    // Convert blob to base64
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64Audio = reader.result.split(',')[1];
+      
+      const response = await api.assessReading({
+        audio_data: base64Audio,
+        expected_text: assessmentText,
+        language_code: language,
+        student_id: 'student_001' // Mock student ID
       });
 
-      if (response.success && response.data.audio) {
-        const audioData = `data:audio/mp3;base64,${response.data.audio}`;
-        audioRef.current.src = audioData;
-        audioRef.current.play();
+      if (response.success) {
+        setResults(response.data);
       }
-    } catch (error) {
-      console.error('TTS failed:', error);
-      alert('Text-to-speech failed. Please try again.');
-    }
-  };
+    };
+    reader.readAsDataURL(audioBlob);
+  } catch (error) {
+    console.error('Assessment failed:', error);
+    alert('Assessment failed. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
 
+const generateTTS = async () => {
+  if (!assessmentText) {
+    alert('Please enter text to convert to speech');
+    return;
+  }
+
+  try {
+    const response = await api.textToSpeech({
+      text: assessmentText,
+      language_code: language
+    });
+
+    if (response.success && response.data.audio) {
+      const audioData = `data:audio/mp3;base64,${response.data.audio}`;
+      audioRef.current.src = audioData;
+      audioRef.current.play();
+    }
+  } catch (error) {
+    console.error('TTS failed:', error);
+    alert('Text-to-speech failed. Please try again.');
+  }
+};
   const getScoreColor = (accuracy) => {
     if (accuracy >= 90) return 'text-green-600';
     if (accuracy >= 70) return 'text-yellow-600';

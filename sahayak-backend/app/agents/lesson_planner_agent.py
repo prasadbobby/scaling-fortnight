@@ -1,11 +1,46 @@
-# sahayak-backend/app/agents/lesson_planner.py
-from typing import Dict, List
-from datetime import datetime, timezone
+# sahayak-backend/app/agents/lesson_planner_agent.py
+from .base_agent import BaseAgent, AgentMessage
 from ..services.gemini_service import GeminiService
+from typing import Dict, List, Any
+import uuid
+from datetime import datetime, timezone
 
-class LessonPlannerAgent:
+class LessonPlannerAgent(BaseAgent):
     def __init__(self, gemini_service: GeminiService):
+        super().__init__(
+            agent_id="lesson_planner",
+            name="Lesson Planner Agent",
+            capabilities=[
+                "lesson_planning",
+                "curriculum_alignment",
+                "activity_design",
+                "resource_planning",
+                "timeline_management"
+            ]
+        )
         self.gemini = gemini_service
+        
+    async def process_message(self, message: AgentMessage) -> AgentMessage:
+        task = message.content.get('task')
+        
+        if task == 'generate_weekly_lesson_plan':
+            result = await self.generate_weekly_lesson_plan(
+                message.content['input']['subjects'],
+                message.content['input']['grade_levels'],
+                message.content['input']['language'],
+                message.content['input'].get('duration_days', 5)
+            )
+        else:
+            result = {'error': f'Unknown task: {task}'}
+        
+        return AgentMessage(
+            id=str(uuid.uuid4()),
+            sender=self.agent_id,
+            recipient=message.sender,
+            content=result,
+            timestamp=datetime.now(timezone.utc),
+            message_type='response'
+        )
     
     def generate_weekly_lesson_plan(self, subjects: List[str], grade_levels: List[int], 
                                   language: str, duration_days: int = 5) -> Dict:

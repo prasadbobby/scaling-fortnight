@@ -15,7 +15,9 @@ export default function AgenticWorkflow({ teacherId }) {
   const [workflowResults, setWorkflowResults] = useState(null);
   const [agentStates, setAgentStates] = useState({});
   const [currentWorkflowId, setCurrentWorkflowId] = useState(null);
+  const [connectionError, setConnectionError] = useState(null);
   const messagesEndRef = useRef(null);
+  const eventSourceRef = useRef(null);
 
   const agents = [
     { id: 'curriculum_planner', name: 'Curriculum Planner', color: 'blue', avatar: '🎯', status: 'idle' },
@@ -28,6 +30,7 @@ export default function AgenticWorkflow({ teacherId }) {
 
   const startAgenticWorkflow = async (workflowData) => {
     setWorkflowState('initializing');
+    setConnectionError(null);
     setMessages([{
       id: Date.now(),
       type: 'system',
@@ -39,13 +42,20 @@ export default function AgenticWorkflow({ teacherId }) {
     try {
       const response = await fetch('http://localhost:8080/api/agentic/start-workflow', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify({
           type: 'comprehensive_lesson_creation',
           data: workflowData,
           teacher_id: teacherId
         })
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
 
       const result = await response.json();
       
@@ -60,34 +70,82 @@ export default function AgenticWorkflow({ teacherId }) {
     } catch (error) {
       console.error('Workflow failed:', error);
       setWorkflowState('error');
+      setConnectionError(error.message);
       addMessage('error', `Failed to start workflow: ${error.message}`);
     }
   };
 
-  const startWorkflowMonitoring = (workflowId) => {
-    const eventSource = new EventSource(`http://localhost:8080/api/agentic/workflow-stream/${workflowId}`);
-    
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        handleWorkflowEvent(data);
-      } catch (error) {
-        console.error('Error parsing event data:', error);
-      }
-    };
+const startWorkflowMonitoring = (workflowId) => {
+  // Close existing connection if any
+  if (eventSourceRef.current) {
+    eventSourceRef.current.close();
+  }
 
-    eventSource.onerror = (error) => {
-      console.error('EventSource error:', error);
+  let retryCount = 0;
+  const maxRetries = 3;
+  let isStreamActive = true;
+
+  const createEventSource = () => {
+    if (!isStreamActive) return;
+
+    try {
+      const eventSource = new EventSource(`http://localhost:8080/api/agentic/workflow-stream/${workflowId}`);
+      eventSourceRef.current = eventSource;
+      
+      eventSource.onopen = () => {
+        console.log('EventSource connection opened');
+        setConnectionError(null);
+        retryCount = 0;
+      };
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          handleWorkflowEvent(data);
+          
+          // If workflow is completed, stop retrying
+          if (data.type === 'workflow_completed' || data.type === 'error') {
+            isStreamActive = false;
+          }
+        } catch (error) {
+          console.error('Error parsing event data:', error);
+          addMessage('error', 'Error parsing server response');
+        }
+      };
+
+      eventSource.onerror = (error) => {
+        console.error('EventSource error:', error);
+        
+        if (eventSource.readyState === EventSource.CLOSED && isStreamActive) {
+          if (retryCount < maxRetries) {
+            retryCount++;
+            addMessage('system', `Connection lost. Retrying... (${retryCount}/${maxRetries})`);
+            setTimeout(() => createEventSource(), 2000 * retryCount);
+          } else {
+            setWorkflowState('error');
+            setConnectionError('Connection lost to workflow monitoring after multiple retries');
+            addMessage('error', 'Connection lost. Please refresh to try again.');
+            isStreamActive = false;
+          }
+        }
+      };
+
+    } catch (error) {
+      console.error('Failed to create EventSource:', error);
       setWorkflowState('error');
-      addMessage('error', 'Connection lost to workflow monitoring');
-      eventSource.close();
-    };
-
-    // Store reference to close later
-    window.currentEventSource = eventSource;
+      setConnectionError('Failed to establish monitoring connection');
+      addMessage('error', 'Failed to establish monitoring connection');
+    }
   };
 
+  createEventSource();
+};
+
+
+
   const handleWorkflowEvent = (data) => {
+    console.log('Received workflow event:', data);
+    
     switch (data.type) {
       case 'agent_started':
         setActiveAgents(prev => [...new Set([...prev, data.data.agent_id])]);
@@ -114,23 +172,26 @@ export default function AgenticWorkflow({ teacherId }) {
         
       case 'workflow_completed':
         setWorkflowState('completed');
-        setWorkflowResults(data.data.results);
+        if (data.data && data.data.results) {
+          setWorkflowResults(data.data.results);
+        }
         addMessage('system', 'Workflow completed successfully!');
-        if (window.currentEventSource) {
-          window.currentEventSource.close();
+        if (eventSourceRef.current) {
+          eventSourceRef.current.close();
         }
         break;
         
       case 'error':
         setWorkflowState('error');
-        addMessage('error', `Error: ${data.data.message}`);
-        if (window.currentEventSource) {
-          window.currentEventSource.close();
+        setConnectionError(data.data?.message || 'Workflow error occurred');
+        addMessage('error', `Error: ${data.data?.message || 'Unknown error'}`);
+        if (eventSourceRef.current) {
+          eventSourceRef.current.close();
         }
         break;
         
       default:
-        console.log('Unknown event type:', data.type);
+        console.log('Unknown event type:', data.type, data);
     }
   };
 
@@ -158,17 +219,21 @@ export default function AgenticWorkflow({ teacherId }) {
     return agent ? agent.avatar : '🤖';
   };
 
-  const resetWorkflow = () => {
-    setWorkflowState('idle');
-    setActiveAgents([]);
-    setMessages([]);
-    setWorkflowResults(null);
-    setAgentStates({});
-    setCurrentWorkflowId(null);
-    if (window.currentEventSource) {
-      window.currentEventSource.close();
-    }
-  };
+const resetWorkflow = () => {
+  // Close EventSource connection
+  if (eventSourceRef.current) {
+    eventSourceRef.current.close();
+    eventSourceRef.current = null;
+  }
+  
+  setWorkflowState('idle');
+  setActiveAgents([]);
+  setMessages([]);
+  setWorkflowResults(null);
+  setAgentStates({});
+  setCurrentWorkflowId(null);
+  setConnectionError(null);
+};
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -177,8 +242,8 @@ export default function AgenticWorkflow({ teacherId }) {
   useEffect(() => {
     // Cleanup on unmount
     return () => {
-      if (window.currentEventSource) {
-        window.currentEventSource.close();
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
       }
     };
   }, []);
@@ -207,6 +272,26 @@ export default function AgenticWorkflow({ teacherId }) {
         )}
       </div>
 
+      {/* Connection Error Banner */}
+      {connectionError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="text-red-500 mt-1" size={20} />
+            <div>
+              <h3 className="font-medium text-red-800">Connection Error</h3>
+              <p className="text-sm text-red-600 mt-1">{connectionError}</p>
+              <button 
+                onClick={resetWorkflow}
+                className="mt-2 text-sm bg-red-100 hover:bg-red-200 text-red-800 px-3 py-1 rounded"
+              >
+                Reset and Try Again
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rest of the component remains the same... */}
       {/* Workflow Input */}
       {workflowState === 'idle' && (
         <motion.div 
@@ -341,7 +426,7 @@ export default function AgenticWorkflow({ teacherId }) {
           
           <div className="bg-gray-50 rounded-lg p-6">
             <h3 className="font-semibold mb-4">Generated Results:</h3>
-            <pre className="text-sm bg-white p-4 rounded border overflow-x-auto">
+            <pre className="text-sm bg-white p-4 rounded border overflow-x-auto max-h-96 overflow-y-auto">
               {JSON.stringify(workflowResults, null, 2)}
             </pre>
           </div>
@@ -366,7 +451,7 @@ export default function AgenticWorkflow({ teacherId }) {
   );
 }
 
-// Workflow Configuration Form Component
+// Workflow Configuration Form Component remains the same...
 function WorkflowConfigForm({ onSubmit }) {
   const [formData, setFormData] = useState({
     subjects: ['Mathematics'],

@@ -4,8 +4,9 @@ from flask_cors import CORS
 import asyncio
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timezone  # Add timezone import here
 import uuid
+import traceback
 
 from app.config import Config
 from app.models.database import FirebaseDB
@@ -14,7 +15,7 @@ from app.services.imagen_service import ImagenService
 from app.services.veo_service import VeoService
 from app.services.speech_service import SpeechService
 
-# Import all agents
+# Import all agents - Fix the import names
 from app.agents.orchestrator import AgentOrchestrator
 from app.agents.curriculum_planner_agent import CurriculumPlannerAgent
 from app.agents.content_creator_agent import ContentCreatorAgent
@@ -114,7 +115,7 @@ class WorkflowManager:
                 'status': 'created',
                 'events': [],
                 'results': None,
-                'created_at': datetime.utcnow(),
+                'created_at': datetime.now(timezone.utc),  # Fixed datetime
                 'started_at': None,
                 'completed_at': None,
                 'agent_states': {},
@@ -138,7 +139,7 @@ class WorkflowManager:
                 'id': str(uuid.uuid4()),
                 'type': event_type,
                 'data': data,
-                'timestamp': datetime.utcnow().isoformat(),
+                'timestamp': datetime.now(timezone.utc).isoformat(),  # Fixed datetime
                 'sent': False
             }
             
@@ -151,7 +152,7 @@ class WorkflowManager:
                 workflow = self.active_workflows[workflow_id]
                 workflow['status'] = 'completed'
                 workflow['results'] = results
-                workflow['completed_at'] = datetime.utcnow()
+                workflow['completed_at'] = datetime.now(timezone.utc)  # Fixed datetime
                 workflow['progress'] = 100
                 
                 # Move to history
@@ -186,15 +187,15 @@ def create_app():
         app.service_manager = ServiceManager(Config)
         print("✅ All AI services ready")
         
+        # Initialize Workflow Manager FIRST
+        print("⚙️ Initializing Workflow Manager...")
+        app.workflow_manager = WorkflowManager()
+        print("✅ Workflow Manager ready")
+        
         # Initialize Agent Orchestrator
         print("🎭 Initializing Agent Orchestrator...")
         app.agent_orchestrator = AgentOrchestrator(app.service_manager.gemini)
         print("✅ Agent Orchestrator ready")
-        
-        # Initialize Workflow Manager
-        print("⚙️ Initializing Workflow Manager...")
-        app.workflow_manager = WorkflowManager()
-        print("✅ Workflow Manager ready")
         
         # Initialize agents
         print("🤖 Setting up agent ecosystem...")
@@ -202,114 +203,134 @@ def create_app():
         print("✅ Agent ecosystem ready")
         
         # Set up async event loop for agents
-        print("🔄 Setting up async event loop...")
+        print("🔄 Setting up async environment...")
         setup_async_environment(app)
         print("✅ Async environment ready")
         
     except Exception as e:
         print(f"❌ Initialization Error: {str(e)}")
+        traceback.print_exc()
         return None
     
-    # Register all blueprints
+    # Register all blueprints with error handling
     print("📋 Registering API routes...")
     
-    # Core routes
-    app.register_blueprint(content_bp, url_prefix='/api/content')
-    app.register_blueprint(materials_bp, url_prefix='/api/materials')
-    app.register_blueprint(knowledge_bp, url_prefix='/api/knowledge')
-    app.register_blueprint(visuals_bp, url_prefix='/api/visuals')
-    app.register_blueprint(speech_bp, url_prefix='/api/speech')
-    app.register_blueprint(planning_bp, url_prefix='/api/planning')
-    
-    # Management routes
-    app.register_blueprint(content_mgmt_bp, url_prefix='/api/content-management')
-    app.register_blueprint(analytics_bp, url_prefix='/api/analytics')
-    app.register_blueprint(export_bp, url_prefix='/api/export')
-    app.register_blueprint(offline_bp, url_prefix='/api/offline')
-    
-    # Advanced features
-    app.register_blueprint(ai_features_bp, url_prefix='/api/ai-features')
-    app.register_blueprint(collaboration_bp, url_prefix='/api/collaboration')
-    
-    # Agentic workflow routes
-    app.register_blueprint(agentic_bp, url_prefix='/api/agentic')
-    
-    print("✅ All routes registered")
+    try:
+        # Core routes
+        app.register_blueprint(content_bp, url_prefix='/api/content')
+        app.register_blueprint(materials_bp, url_prefix='/api/materials')
+        app.register_blueprint(knowledge_bp, url_prefix='/api/knowledge')
+        app.register_blueprint(visuals_bp, url_prefix='/api/visuals')
+        app.register_blueprint(speech_bp, url_prefix='/api/speech')
+        app.register_blueprint(planning_bp, url_prefix='/api/planning')
+        
+        # Management routes
+        app.register_blueprint(content_mgmt_bp, url_prefix='/api/content-management')
+        app.register_blueprint(analytics_bp, url_prefix='/api/analytics')
+        app.register_blueprint(export_bp, url_prefix='/api/export')
+        app.register_blueprint(offline_bp, url_prefix='/api/offline')
+        
+        # Advanced features
+        app.register_blueprint(ai_features_bp, url_prefix='/api/ai-features')
+        app.register_blueprint(collaboration_bp, url_prefix='/api/collaboration')
+        
+        # Agentic workflow routes
+        app.register_blueprint(agentic_bp, url_prefix='/api/agentic')
+        
+        print("✅ All routes registered")
+        
+    except Exception as e:
+        print(f"❌ Route registration error: {str(e)}")
+        traceback.print_exc()
+        return None
     
     # Health check endpoint
     @app.route('/health')
     def health_check():
-        return jsonify({
-            'status': 'healthy',
-            'service': 'Sahayak AI Teaching Assistant',
-            'project_id': Config.PROJECT_ID,
-            'version': '2.0.0-agentic',
-            'features': {
-                'agentic_workflows': True,
-                'multi_agent_collaboration': True,
-                'real_time_monitoring': True,
-                'agent_learning': True
-            },
-            'agents': {
-                'total_registered': len(app.agent_orchestrator.agents),
-                'active_workflows': len(app.workflow_manager.active_workflows),
-                'agent_list': [
-                    {
-                        'id': agent.agent_id,
-                        'name': agent.name,
-                        'capabilities': agent.capabilities
-                    }
-                    for agent in app.agent_orchestrator.agents.values()
-                ]
-            }
-        })
+        try:
+            return jsonify({
+                'status': 'healthy',
+                'service': 'Sahayak AI Teaching Assistant',
+                'project_id': Config.PROJECT_ID,
+                'version': '2.0.0-agentic',
+                'features': {
+                    'agentic_workflows': True,
+                    'multi_agent_collaboration': True,
+                    'real_time_monitoring': True,
+                    'agent_learning': True
+                },
+                'agents': {
+                    'total_registered': len(app.agent_orchestrator.agents),
+                    'active_workflows': len(app.workflow_manager.active_workflows),
+                    'agent_list': [
+                        {
+                            'id': agent.agent_id,
+                            'name': agent.name,
+                            'capabilities': agent.capabilities
+                        }
+                        for agent in app.agent_orchestrator.agents.values()
+                    ]
+                }
+            })
+        except Exception as e:
+            return jsonify({
+                'status': 'error',
+                'error': str(e)
+            }), 500
     
     # Agent status endpoint
     @app.route('/api/agents/status')
     def agent_status():
-        agents_info = []
-        for agent_id, agent in app.agent_orchestrator.agents.items():
-            agents_info.append({
-                'id': agent_id,
-                'name': agent.name,
-                'capabilities': agent.capabilities,
-                'memory_size': len(agent.memory.interactions),
-                'success_metrics': agent.memory.success_metrics,
-                'learned_patterns': len(agent.memory.learned_patterns),
-                'active_tasks': len(agent.active_tasks)
+        try:
+            agents_info = []
+            for agent_id, agent in app.agent_orchestrator.agents.items():
+                agents_info.append({
+                    'id': agent_id,
+                    'name': agent.name,
+                    'capabilities': agent.capabilities,
+                    'memory_size': len(agent.memory.interactions),
+                    'success_metrics': agent.memory.success_metrics,
+                    'learned_patterns': len(agent.memory.learned_patterns),
+                    'active_tasks': len(agent.active_tasks)
+                })
+            
+            return jsonify({
+                'success': True,
+                'agents': agents_info,
+                'orchestrator_stats': {
+                    'total_agents': len(app.agent_orchestrator.agents),
+                    'active_workflows': len(app.agent_orchestrator.active_workflows),
+                    'global_context_size': len(app.agent_orchestrator.global_context)
+                }
             })
-        
-        return jsonify({
-            'success': True,
-            'agents': agents_info,
-            'orchestrator_stats': {
-                'total_agents': len(app.agent_orchestrator.agents),
-                'active_workflows': len(app.agent_orchestrator.active_workflows),
-                'global_context_size': len(app.agent_orchestrator.global_context)
-            }
-        })
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
     
     # Workflow management endpoints
     @app.route('/api/workflows/active')
     def active_workflows():
-        workflows = []
-        for workflow_id, workflow in app.workflow_manager.active_workflows.items():
-            workflows.append({
-                'id': workflow_id,
-                'type': workflow['type'],
-                'status': workflow['status'],
-                'progress': workflow['progress'],
-                'created_at': workflow['created_at'].isoformat(),
-                'teacher_id': workflow['teacher_id']
+        try:
+            workflows = []
+            for workflow_id, workflow in app.workflow_manager.active_workflows.items():
+                workflows.append({
+                    'id': workflow_id,
+                    'type': workflow['type'],
+                    'status': workflow['status'],
+                    'progress': workflow['progress'],
+                    'created_at': workflow['created_at'].isoformat(),
+                    'teacher_id': workflow['teacher_id']
+                })
+            
+            return jsonify({
+                'success': True,
+                'workflows': workflows,
+                'total_active': len(workflows)
             })
-        
-        return jsonify({
-            'success': True,
-            'workflows': workflows,
-            'total_active': len(workflows)
-        })
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
     
     return app
+
 
 def setup_async_environment(app):
     """Set up async environment for agent operations"""
@@ -321,10 +342,10 @@ def setup_async_environment(app):
             """Periodic agent maintenance"""
             while True:
                 try:
-                    # Update global context
+                    # Update global context using the actual app instance
                     with app.app_context():
                         app.agent_orchestrator.update_global_context({
-                            'timestamp': datetime.utcnow().isoformat(),
+                            'timestamp': datetime.now(timezone.utc).isoformat(),
                             'active_workflows': len(app.workflow_manager.active_workflows),
                             'system_status': 'healthy'
                         })
@@ -344,22 +365,21 @@ def setup_async_environment(app):
     # Start async loop in background thread
     async_thread = threading.Thread(target=run_async_loop, daemon=True)
     async_thread.start()
-    
-    # Store loop reference for agent operations
-    app.async_loop = asyncio.new_event_loop()
 
 def cleanup_old_events(app):
     """Clean up old workflow events to prevent memory issues"""
-    cutoff_time = datetime.utcnow().timestamp() - 3600  # 1 hour ago
-    
-    for workflow_id, workflow in app.workflow_manager.active_workflows.items():
-        if workflow['status'] in ['completed', 'error']:
-            # Keep only recent events for completed workflows
-            workflow['events'] = [
-                event for event in workflow['events']
-                if datetime.fromisoformat(event['timestamp']).timestamp() > cutoff_time
-            ]
-
+    try:
+        cutoff_time = datetime.now(timezone.utc).timestamp() - 3600  # 1 hour ago
+        
+        for workflow_id, workflow in app.workflow_manager.active_workflows.items():
+            if workflow['status'] in ['completed', 'error']:
+                # Keep only recent events for completed workflows
+                workflow['events'] = [
+                    event for event in workflow['events']
+                    if datetime.fromisoformat(event['timestamp'].replace('Z', '+00:00')).timestamp() > cutoff_time
+                ]
+    except Exception as e:
+        print(f"⚠️ Cleanup error: {e}")
 def run_development_server():
     """Run the development server with auto-reload"""
     print("🚀 Starting Sahayak AI Teaching Assistant...")

@@ -1,7 +1,8 @@
 'use client';
 import { useState } from 'react';
 import { Image, Video, Wand2, Download, Eye, AlertCircle } from 'lucide-react';
-import apiService from '@/services/api';
+import api from '@/lib/api';
+
 
 export default function VisualGenerator({ teacherId }) {
   const [activeTab, setActiveTab] = useState('diagram');
@@ -30,107 +31,107 @@ export default function VisualGenerator({ teacherId }) {
     'minimalist design'
   ];
 
-  const checkServiceStatus = async () => {
-    try {
-      const response = await apiService.get('/visuals/service-status');
-      if (response.success) {
-        setServiceStatus(response.services);
-      }
-    } catch (error) {
-      console.error('Failed to check service status:', error);
+const checkServiceStatus = async () => {
+  try {
+    const response = await api.get('/visuals/service-status');
+    if (response.success) {
+      setServiceStatus(response.services);
     }
-  };
+  } catch (error) {
+    console.error('Failed to check service status:', error);
+  }
+};
 
   useState(() => {
     checkServiceStatus();
   }, []);
 
-  const generateDiagram = async () => {
-    if (!diagramData.concept) {
-      alert('Please enter a concept');
-      return;
-    }
+const generateDiagram = async () => {
+  if (!diagramData.concept) {
+    alert('Please enter a concept');
+    return;
+  }
 
-    setLoading(true);
-    try {
-      const response = await apiService.post('/visuals/generate-diagram', diagramData);
-      
-      if (response.success) {
-        setGeneratedContent({
-          type: 'image',
-          data: response.data
-        });
-      } else {
-        setGeneratedContent({
-          type: 'fallback',
-          data: response
-        });
-      }
-    } catch (error) {
-      console.error('Diagram generation failed:', error);
-      alert('Failed to generate diagram. Please try again.');
-    } finally {
-      setLoading(false);
+  setLoading(true);
+  try {
+    const response = await api.generateDiagram(diagramData);
+    
+    if (response.success) {
+      setGeneratedContent({
+        type: 'image',
+        data: response.data
+      });
+    } else {
+      setGeneratedContent({
+        type: 'fallback',
+        data: response
+      });
     }
-  };
+  } catch (error) {
+    console.error('Diagram generation failed:', error);
+    alert('Failed to generate diagram. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
 
-  const generateVisualAid = async () => {
-    if (!visualData.description) {
-      alert('Please enter a description');
-      return;
-    }
+const generateVisualAid = async () => {
+  if (!visualData.description) {
+    alert('Please enter a description');
+    return;
+  }
 
-    setLoading(true);
-    try {
-      const response = await apiService.post('/visuals/generate-visual-aid', visualData);
-      
-      if (response.success) {
-        setGeneratedContent({
-          type: 'image',
-          data: response.data
-        });
-      } else {
-        setGeneratedContent({
-          type: 'fallback',
-          data: response
-        });
-      }
-    } catch (error) {
-      console.error('Visual aid generation failed:', error);
-      alert('Failed to generate visual aid. Please try again.');
-    } finally {
-      setLoading(false);
+  setLoading(true);
+  try {
+    const response = await api.generateVisual(visualData);
+    
+    if (response.success) {
+      setGeneratedContent({
+        type: 'image',
+        data: response.data
+      });
+    } else {
+      setGeneratedContent({
+        type: 'fallback',
+        data: response
+      });
     }
-  };
+  } catch (error) {
+    console.error('Visual aid generation failed:', error);
+    alert('Failed to generate visual aid. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
 
-  const generateVideo = async () => {
-    if (!videoData.description) {
-      alert('Please enter a description');
-      return;
-    }
+const generateVideo = async () => {
+  if (!videoData.description) {
+    alert('Please enter a description');
+    return;
+  }
 
-    setLoading(true);
-    try {
-      const response = await apiService.post('/visuals/generate-video', videoData);
-      
-      if (response.success) {
-        setGeneratedContent({
-          type: 'video',
-          data: response.data
-        });
-      } else {
-        setGeneratedContent({
-          type: 'fallback',
-          data: response
-        });
-      }
-    } catch (error) {
-      console.error('Video generation failed:', error);
-      alert('Failed to generate video. Please try again.');
-    } finally {
-      setLoading(false);
+  setLoading(true);
+  try {
+    const response = await api.post('/visuals/generate-video', videoData);
+    
+    if (response.success) {
+      setGeneratedContent({
+        type: 'video',
+        data: response.data
+      });
+    } else {
+      setGeneratedContent({
+        type: 'fallback',
+        data: response
+      });
     }
-  };
+  } catch (error) {
+    console.error('Video generation failed:', error);
+    alert('Failed to generate video. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const renderServiceStatus = () => {
     if (!serviceStatus) return null;

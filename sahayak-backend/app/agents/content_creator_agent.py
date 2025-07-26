@@ -4,6 +4,7 @@ from ..services.gemini_service import GeminiService
 from typing import Dict, List, Any
 import uuid
 from datetime import datetime
+from datetime import datetime, timezone
 
 class ContentCreatorAgent(BaseAgent):
     def __init__(self, gemini_service, imagen_service, veo_service):
@@ -35,7 +36,7 @@ class ContentCreatorAgent(BaseAgent):
             sender=self.agent_id,
             recipient=message.sender,
             content=result,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             message_type='response'
         )
     
@@ -96,7 +97,7 @@ class ContentCreatorAgent(BaseAgent):
             },
             'metadata': {
                 'generated_by': self.agent_id,
-                'generation_time': datetime.utcnow().isoformat(),
+                'generation_time': datetime.now(timezone.utc).isoformat(),
                 'language': language
             }
         }

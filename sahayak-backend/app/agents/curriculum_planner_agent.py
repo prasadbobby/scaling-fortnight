@@ -4,6 +4,7 @@ from ..services.gemini_service import GeminiService
 from typing import Dict, List, Any
 import uuid
 from datetime import datetime
+from datetime import datetime, timezone 
 
 class CurriculumPlannerAgent(BaseAgent):
     def __init__(self, gemini_service: GeminiService):
@@ -33,7 +34,7 @@ class CurriculumPlannerAgent(BaseAgent):
             sender=self.agent_id,
             recipient=message.sender,
             content=result,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             message_type='response'
         )
     

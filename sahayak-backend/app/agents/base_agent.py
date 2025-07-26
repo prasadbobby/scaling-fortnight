@@ -2,7 +2,7 @@
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 import asyncio
 
@@ -62,7 +62,7 @@ class BaseAgent(ABC):
             sender=self.agent_id,
             recipient=recipient,
             content=content,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             message_type=message_type
         )
         
