@@ -13,55 +13,41 @@ import VisualGenerator from '@/components/VisualGenerator';
 import Analytics from '@/components/Analytics';
 import ContentLibrary from '@/components/ContentLibrary';
 import KnowledgeBase from '@/components/KnowledgeBase';
+import AgenticWorkflow from '@/components/AgenticWorkflow';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { 
   BookOpen, PenTool, Layers, Mic, Image, BarChart3, 
-  FolderOpen, Brain, Home as HomeIcon, Sparkles 
+  FolderOpen, Brain, Home as HomeIcon, Sparkles, Workflow 
 } from 'lucide-react';
 
 export default function ClientWrapper() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const teacherId = 'teacher_001';
 
   const navigationItems = [
     { id: 'dashboard', label: 'Dashboard', icon: HomeIcon, color: 'blue' },
-    { id: 'content', label: 'Content Generator', icon: PenTool, color: 'purple' },
-    { id: 'lessons', label: 'Lesson Planner', icon: BookOpen, color: 'green' },
-    { id: 'materials', label: 'Material Differentiator', icon: Layers, color: 'orange' },
-    { id: 'speech', label: 'Speech Assessment', icon: Mic, color: 'red' },
-    { id: 'visuals', label: 'Visual Generator', icon: Image, color: 'indigo' },
-    { id: 'knowledge', label: 'Knowledge Base', icon: Brain, color: 'cyan' },
-    { id: 'library', label: 'Content Library', icon: FolderOpen, color: 'pink' },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3, color: 'emerald' }
+    { id: 'agentic', label: 'Agentic Workflow', icon: Workflow, color: 'purple' },
+    { id: 'content', label: 'Content Generator', icon: PenTool, color: 'green' },
+    { id: 'lessons', label: 'Lesson Planner', icon: BookOpen, color: 'orange' },
+    { id: 'materials', label: 'Material Differentiator', icon: Layers, color: 'red' },
+    { id: 'speech', label: 'Speech Assessment', icon: Mic, color: 'indigo' },
+    { id: 'visuals', label: 'Visual Generator', icon: Image, color: 'cyan' },
+    { id: 'knowledge', label: 'Knowledge Base', icon: Brain, color: 'pink' },
+    { id: 'library', label: 'Content Library', icon: FolderOpen, color: 'emerald' },
+    { id: 'analytics', label: 'Analytics', icon: BarChart3, color: 'orange' }
   ];
 
   useEffect(() => {
-    // Simulate app initialization
+    // Simple initialization
     const initializeApp = async () => {
-      try {
-        setLoading(true);
-        
-        // Check if API is available
-        try {
-          const response = await fetch('http://localhost:8080/health');
-          if (!response.ok) {
-            throw new Error('Backend not available');
-          }
-        } catch (apiError) {
-          console.log('Backend not available, running in offline mode');
-        }
-        
-        // Simulate loading time
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        setLoading(false);
-      } catch (error) {
-        console.error('Initialization error:', error);
-        setLoading(false);
-      }
+      setLoading(true);
+      
+      // Simulate loading time for smooth UX
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      setLoading(false);
     };
 
     initializeApp();
@@ -71,6 +57,7 @@ export default function ClientWrapper() {
     const props = { teacherId };
     const components = {
       dashboard: Dashboard,
+      agentic: AgenticWorkflow,
       content: ContentGenerator,
       lessons: LessonPlanner,
       materials: MaterialDifferentiator,
@@ -89,30 +76,6 @@ export default function ClientWrapper() {
     return <LoadingSpinner />;
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center p-4">
-        <motion.div 
-          className="text-center bg-white rounded-2xl shadow-xl p-8 max-w-md"
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-        >
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Sparkles className="text-red-500" size={32} />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Connection Error</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all"
-          >
-            Try Again
-          </button>
-        </motion.div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50">
       <Navbar 
@@ -129,7 +92,6 @@ export default function ClientWrapper() {
           onClose={() => setSidebarOpen(false)}
         />
         
-        {/* Main Content - Removed the margin left issue */}
         <main className="flex-1 w-full min-h-screen">
           <div className="w-full px-4 py-6 lg:px-8 lg:py-8">
             <div className="max-w-full mx-auto">

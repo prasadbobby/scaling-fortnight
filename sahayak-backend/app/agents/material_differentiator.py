@@ -1,112 +1,273 @@
-from typing import Dict, List
+# sahayak-backend/app/agents/material_differentiator_agent.py
+from .base_agent import BaseAgent, AgentMessage
 from ..services.gemini_service import GeminiService
+from typing import Dict, List, Any
+import uuid
+from datetime import datetime
 
-class MaterialDifferentiatorAgent:
+class MaterialDifferentiatorAgent(BaseAgent):
     def __init__(self, gemini_service: GeminiService):
+        super().__init__(
+            agent_id="material_differentiator",
+            name="Material Differentiator Agent",
+            capabilities=[
+                "content_adaptation",
+                "difficulty_scaling", 
+                "multi_grade_optimization",
+                "accessibility_enhancement",
+                "learning_style_adaptation"
+            ]
+        )
         self.gemini = gemini_service
-    
-    def differentiate_textbook_page(self, image_data: bytes, grade_levels: List[int], language: str) -> Dict:
-        """Create differentiated materials from textbook page"""
-        try:
-            # First, analyze the textbook page
-            analysis_prompt = f"""
-            Analyze this textbook page and extract:
-            1. Main topic/subject
-            2. Key concepts
-            3. Current grade level
-            4. Learning objectives
-            5. Content summary
-            
-            Provide analysis in {language}:
-            """
-            
-            page_analysis = self.gemini.analyze_image_and_generate(image_data, analysis_prompt)
-            
-            # Generate differentiated worksheets for each grade level
-            differentiated_materials = {}
-            
-            for grade in grade_levels:
-                worksheet_prompt = f"""
-                Based on the textbook page analysis: {page_analysis}
-                
-                Create a worksheet for Grade {grade} students in {language} that includes:
-                1. Simplified/enhanced explanations appropriate for Grade {grade}
-                2. 3-5 questions of varying difficulty
-                3. Activity suggestions
-                4. Assessment rubric
-                
-                Format as a complete worksheet in {language}:
-                """
-                
-                worksheet = self.gemini.generate_content(worksheet_prompt, language)
-                differentiated_materials[grade] = {
-                    'worksheet': worksheet,
-                    'difficulty_level': self._determine_difficulty(grade),
-                    'estimated_time': self._estimate_completion_time(grade)
-                }
-            
-            return {
-                'original_analysis': page_analysis,
-                'differentiated_materials': differentiated_materials,
-                'metadata': {
-                    'grade_levels': grade_levels,
-                    'language': language,
-                    'generated_at': self._get_timestamp()
-                }
-            }
-            
-        except Exception as e:
-            raise Exception(f"Material differentiation failed: {str(e)}")
-    
-    def create_multi_level_assessment(self, topic: str, grade_levels: List[int], language: str) -> Dict:
-        """Create assessments for multiple grade levels"""
-        assessments = {}
         
-        for grade in grade_levels:
-            prompt = f"""
-            Create an assessment for {topic} suitable for Grade {grade} students in {language}.
+    async def process_message(self, message: AgentMessage) -> AgentMessage:
+        task = message.content.get('task')
+        
+        if task == 'create_differentiated_materials':
+            result = await self.create_differentiated_materials(message.content['input'])
+        else:
+            result = {'error': f'Unknown task: {task}'}
+        
+        return AgentMessage(
+            id=str(uuid.uuid4()),
+            sender=self.agent_id,
+            recipient=message.sender,
+            content=result,
+            timestamp=datetime.utcnow(),
+            message_type='response'
+        )
+    
+    async def create_differentiated_materials(self, content_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create differentiated materials from base content"""
+        
+        content_package = content_data.get('content_package', {})
+        differentiated_materials = {}
+        
+        # Extract unique grade levels from content
+        grade_levels = set()
+        for item in content_package.values():
+            grade_levels.add(item.get('grade_level'))
+        
+        grade_levels = sorted(list(grade_levels))
+        
+        # Differentiate each content item for different learning levels
+        for content_key, content_item in content_package.items():
+            base_content = content_item.get('content', '')
+            subject = content_item.get('subject', '')
+            grade = content_item.get('grade_level', 5)
+            content_type = content_item.get('type', '')
             
-            Include:
-            1. 5 multiple choice questions
-            2. 3 short answer questions
-            3. 1 practical application question
-            4. Answer key with explanations
+            # Create differentiated versions
+            differentiated_versions = await self.create_grade_variations(
+                base_content, subject, grade, content_type
+            )
             
-            Ensure appropriate difficulty level for Grade {grade}.
-            
-            Assessment in {language}:
-            """
-            
-            try:
-                assessment = self.gemini.generate_content(prompt, language)
-                assessments[grade] = assessment
-            except Exception as e:
-                assessments[grade] = f"Error generating assessment for Grade {grade}: {str(e)}"
+            differentiated_materials[content_key] = {
+                'original': content_item,
+                'differentiated_versions': differentiated_versions,
+                'grade_adaptations': await self.create_grade_adaptations(
+                    base_content, subject, grade_levels, content_type
+                ),
+                'accessibility_features': await self.add_accessibility_features(base_content),
+                'learning_style_variations': await self.create_learning_style_variations(
+                    base_content, subject, grade, content_type
+                )
+            }
+        
+        await self.learn_from_interaction({
+            'task_type': 'material_differentiation',
+            'success_score': 0.88,
+            'patterns': {
+                'grade_levels': list(grade_levels),
+                'content_types': list(set(item.get('type') for item in content_package.values())),
+                'differentiation_strategies': ['grade_adaptation', 'accessibility', 'learning_styles']
+            }
+        })
         
         return {
-            'assessments': assessments,
-            'topic': topic,
-            'grade_levels': grade_levels,
-            'language': language
+            'differentiated_materials': differentiated_materials,
+            'differentiation_summary': {
+                'total_items_processed': len(content_package),
+                'grade_levels_covered': list(grade_levels),
+                'differentiation_types': ['beginner', 'intermediate', 'advanced', 'accessibility', 'visual', 'auditory', 'kinesthetic']
+            },
+            'metadata': {
+                'differentiated_by': self.agent_id,
+                'differentiation_time': datetime.utcnow().isoformat(),
+                'quality_score': 0.88
+            }
         }
     
-    def _determine_difficulty(self, grade: int) -> str:
-        """Determine difficulty level based on grade"""
-        if grade <= 3:
-            return "Basic"
-        elif grade <= 6:
-            return "Intermediate"
-        elif grade <= 9:
-            return "Advanced"
-        else:
-            return "Expert"
+    async def create_grade_variations(self, content: str, subject: str, base_grade: int, content_type: str) -> Dict[str, str]:
+        """Create variations for different difficulty levels"""
+        
+        variations = {}
+        
+        # Create beginner version (1 grade below)
+        beginner_prompt = f"""
+        Adapt this {content_type} about {subject} for students who are 1 grade level below (simpler than Grade {base_grade}):
+        
+        Original content: {content}
+        
+        Make it:
+        - Simpler vocabulary
+        - Shorter sentences
+        - Basic concepts only
+        - More visual/concrete examples
+        
+        Adapted content:
+        """
+        
+        variations['beginner'] = self.gemini.generate_content(beginner_prompt)
+        
+        # Create advanced version (1 grade above)
+        advanced_prompt = f"""
+        Enhance this {content_type} about {subject} for students who are 1 grade level above (more complex than Grade {base_grade}):
+        
+        Original content: {content}
+        
+        Make it:
+        - More sophisticated vocabulary
+        - Complex concepts
+        - Critical thinking elements
+        - Extended applications
+        
+        Enhanced content:
+        """
+        
+        variations['advanced'] = self.gemini.generate_content(advanced_prompt)
+        
+        # Keep intermediate as original
+        variations['intermediate'] = content
+        
+        return variations
     
-    def _estimate_completion_time(self, grade: int) -> str:
-        """Estimate completion time based on grade"""
-        base_time = 15 + (grade * 2)  # Base time increases with grade
-        return f"{base_time}-{base_time + 10} minutes"
+    async def create_grade_adaptations(self, content: str, subject: str, grade_levels: List[int], content_type: str) -> Dict[int, str]:
+        """Create specific adaptations for each grade level"""
+        
+        adaptations = {}
+        
+        for grade in grade_levels:
+            adaptation_prompt = f"""
+            Adapt this {content_type} about {subject} specifically for Grade {grade} students:
+            
+            Original content: {content}
+            
+            Consider Grade {grade} characteristics:
+            - Cognitive development level
+            - Attention span
+            - Prior knowledge
+            - Learning capabilities
+            - Interest areas
+            
+            Create Grade {grade} specific version:
+            """
+            
+            adaptations[grade] = self.gemini.generate_content(adaptation_prompt)
+        
+        return adaptations
     
-    def _get_timestamp(self) -> str:
-        """Get current timestamp"""
-        from datetime import datetime
-        return datetime.utcnow().isoformat()
+    async def add_accessibility_features(self, content: str) -> Dict[str, str]:
+        """Add accessibility features to content"""
+        
+        accessibility_features = {}
+        
+        # Large print version
+        accessibility_features['large_print'] = f"[LARGE PRINT VERSION]\n{content}\n[END LARGE PRINT]"
+        
+        # Simple language version
+        simple_prompt = f"""
+        Rewrite this content using very simple language for students with learning difficulties:
+        
+        Original: {content}
+        
+        Use:
+        - Very simple words
+        - Short sentences
+        - Clear structure
+        - Step-by-step format
+        
+        Simple version:
+        """
+        
+        accessibility_features['simple_language'] = self.gemini.generate_content(simple_prompt)
+        
+        # Audio description version
+        audio_prompt = f"""
+        Create an audio-friendly description of this content for students with visual impairments:
+        
+        Content: {content}
+        
+        Include:
+        - Clear verbal descriptions
+        - Spatial relationships
+        - Visual elements described
+        - Audio cues
+        
+        Audio description:
+        """
+        
+        accessibility_features['audio_description'] = self.gemini.generate_content(audio_prompt)
+        
+        return accessibility_features
+    
+    async def create_learning_style_variations(self, content: str, subject: str, grade: int, content_type: str) -> Dict[str, str]:
+        """Create variations for different learning styles"""
+        
+        learning_styles = {}
+        
+        # Visual learner version
+        visual_prompt = f"""
+        Adapt this {content_type} for visual learners (Grade {grade}, {subject}):
+        
+        Content: {content}
+        
+        Add:
+        - Visual descriptions
+        - Diagrams suggestions
+        - Color coding ideas
+        - Spatial arrangements
+        - Charts and graphs references
+        
+        Visual learner version:
+        """
+        
+        learning_styles['visual'] = self.gemini.generate_content(visual_prompt)
+        
+        # Auditory learner version
+        auditory_prompt = f"""
+        Adapt this {content_type} for auditory learners (Grade {grade}, {subject}):
+        
+        Content: {content}
+        
+        Add:
+        - Rhythm and rhyme
+        - Discussion prompts
+        - Verbal repetition
+        - Sound associations
+        - Music connections
+        
+        Auditory learner version:
+        """
+        
+        learning_styles['auditory'] = self.gemini.generate_content(auditory_prompt)
+        
+        # Kinesthetic learner version
+        kinesthetic_prompt = f"""
+        Adapt this {content_type} for kinesthetic learners (Grade {grade}, {subject}):
+        
+        Content: {content}
+        
+        Add:
+        - Hands-on activities
+        - Movement exercises
+        - Physical manipulatives
+        - Role-playing elements
+        - Touch and feel components
+        
+        Kinesthetic learner version:
+        """
+        
+        learning_styles['kinesthetic'] = self.gemini.generate_content(kinesthetic_prompt)
+        
+        return learning_styles

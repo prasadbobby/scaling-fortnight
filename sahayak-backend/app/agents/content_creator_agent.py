@@ -145,3 +145,6 @@ class ContentCreatorAgent(BaseAgent):
         
         Create the worksheet in {language}:
         """
+        
+        worksheet = self.gemini.generate_content(prompt, language)
+        return worksheet
