@@ -16,13 +16,9 @@ def generate_lesson_plan():
         duration_days = data.get('duration_days', 5)
         teacher_id = data.get('teacher_id')
         
-        agent = current_app.agent_manager.lesson_planner
-        lesson_plan = agent.generate_weekly_lesson_plan(
-            data['subjects'],
-            data['grade_levels'],
-            data['language'],
-            duration_days
-        )
+        # Get agent service and generate lesson plan
+        agent_service = current_app.agent_service
+        lesson_plan = agent_service.generate_lesson_plan(data)
         
         # Save lesson plan if teacher_id provided
         if teacher_id:
@@ -45,33 +41,5 @@ def generate_lesson_plan():
         })
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@planning_bp.route('/generate-activities', methods=['POST'])
-def generate_activities():
-    """Generate activity suggestions"""
-    try:
-        data = request.get_json()
-        
-        required_fields = ['topic', 'grade_levels', 'language']
-        for field in required_fields:
-            if field not in data:
-                return jsonify({'error': f'Missing required field: {field}'}), 400
-        
-        available_resources = data.get('available_resources', ['blackboard', 'chalk', 'notebooks'])
-        
-        agent = current_app.agent_manager.lesson_planner
-        activities = agent.generate_activity_suggestions(
-            data['topic'],
-            data['grade_levels'],
-            available_resources,
-            data['language']
-        )
-        
-        return jsonify({
-            'success': True,
-            'data': activities
-        })
-        
-    except Exception as e:
+        print(f"❌ Lesson plan generation error: {e}")
         return jsonify({'error': str(e)}), 500

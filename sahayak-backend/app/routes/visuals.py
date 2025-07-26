@@ -26,7 +26,8 @@ def generate_diagram():
                 'fallback': {
                     'concept': data['concept'],
                     'grade_level': data['grade_level'],
-                    'suggestion': 'Use text-based descriptions or draw diagrams manually'
+                    'suggestion': f"Create a hand-drawn diagram showing {data['concept']} suitable for Grade {data['grade_level']} students",
+                    'text_description': f"A simple educational diagram explaining {data['concept']} with clear labels and age-appropriate illustrations for Grade {data['grade_level']} students."
                 }
             }), 503
         
@@ -40,7 +41,11 @@ def generate_diagram():
                 'success': False,
                 'error': 'Image generation failed',
                 'concept': data['concept'],
-                'grade_level': data['grade_level']
+                'grade_level': data['grade_level'],
+                'fallback': {
+                    'suggestion': f"Create a hand-drawn diagram of {data['concept']}",
+                    'text_description': f"Draw a simple diagram showing {data['concept']} with clear labels for Grade {data['grade_level']} students."
+                }
             }), 500
         
         # Encode image data
@@ -57,7 +62,18 @@ def generate_diagram():
         })
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"❌ Diagram generation error: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Image generation failed',
+            'message': str(e),
+            'fallback': {
+                'concept': data.get('concept', ''),
+                'grade_level': data.get('grade_level', ''),
+                'suggestion': f"Create a hand-drawn diagram of {data.get('concept', 'the concept')}",
+                'text_description': f"Draw a simple educational diagram with clear labels appropriate for the grade level."
+            }
+        }), 500
 
 @visuals_bp.route('/generate-visual-aid', methods=['POST'])
 def generate_visual_aid():
@@ -82,7 +98,8 @@ def generate_visual_aid():
                 'fallback': {
                     'description': description,
                     'style': style,
-                    'text_description': f"Manual drawing suggestion: {description} in {style} style"
+                    'suggestion': f"Create a {style} showing {description}",
+                    'text_description': f"Manual drawing suggestion: {description} in {style} style suitable for educational use."
                 }
             }), 503
         
@@ -93,7 +110,11 @@ def generate_visual_aid():
                 'success': False,
                 'error': 'Image generation failed',
                 'description': description,
-                'style': style
+                'style': style,
+                'fallback': {
+                    'suggestion': f"Create a {style} of {description}",
+                    'text_description': f"Manual drawing suggestion: {description} using {style} technique."
+                }
             }), 500
         
         # Encode image data
@@ -110,7 +131,18 @@ def generate_visual_aid():
         })
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"❌ Visual aid generation error: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Image generation failed',
+            'message': str(e),
+            'fallback': {
+                'description': description,
+                'style': style,
+                'suggestion': f"Create a {style} showing {description}",
+                'text_description': f"Manual creation suggestion: {description} in {style} format."
+            }
+        }), 500
 
 @visuals_bp.route('/generate-video', methods=['POST'])
 def generate_video():
@@ -135,7 +167,8 @@ def generate_video():
                 'fallback': {
                     'description': description,
                     'duration': duration,
-                    'suggestion': 'Use text-based explanations or create simple animations manually'
+                    'suggestion': f"Create a {duration}-second educational presentation or animation about {description}",
+                    'text_description': f"Manual creation suggestion: Develop educational content showing {description} over {duration} seconds."
                 }
             }), 503
         
@@ -146,7 +179,11 @@ def generate_video():
                 'success': False,
                 'error': 'Video generation failed',
                 'description': description,
-                'duration': duration
+                'duration': duration,
+                'fallback': {
+                    'suggestion': f"Create an educational presentation about {description}",
+                    'text_description': f"Manual creation: Develop a {duration}-second educational video about {description}."
+                }
             }), 500
         
         # Encode video data
@@ -163,7 +200,18 @@ def generate_video():
         })
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"❌ Video generation error: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Video generation failed',
+            'message': str(e),
+            'fallback': {
+                'description': description,
+                'duration': duration,
+                'suggestion': f"Create educational content about {description}",
+                'text_description': f"Manual creation: Develop educational material covering {description}."
+            }
+        }), 500
 
 @visuals_bp.route('/service-status', methods=['GET'])
 def service_status():
@@ -187,4 +235,5 @@ def service_status():
         })
         
     except Exception as e:
+        print(f"❌ Service status error: {e}")
         return jsonify({'error': str(e)}), 500

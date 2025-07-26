@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app
 from werkzeug.utils import secure_filename
 import os
+import base64
 
 materials_bp = Blueprint('materials', __name__)
 
@@ -27,9 +28,9 @@ def differentiate_textbook():
         # Read image data
         image_data = file.read()
         
-        # Get agent and process
-        agent = current_app.agent_manager.material_differentiator
-        result = agent.differentiate_textbook_page(image_data, grade_levels, language)
+        # Get agent service and process
+        agent_service = current_app.agent_service
+        result = agent_service.differentiate_textbook_content(image_data, grade_levels, language)
         
         # Save to database if teacher_id provided
         if teacher_id:
@@ -50,6 +51,7 @@ def differentiate_textbook():
         })
         
     except Exception as e:
+        print(f"❌ Textbook differentiation error: {e}")
         return jsonify({'error': str(e)}), 500
 
 @materials_bp.route('/create-assessment', methods=['POST'])
@@ -63,12 +65,9 @@ def create_assessment():
             if field not in data:
                 return jsonify({'error': f'Missing required field: {field}'}), 400
         
-        agent = current_app.agent_manager.material_differentiator
-        result = agent.create_multi_level_assessment(
-            data['topic'],
-            data['grade_levels'],
-            data['language']
-        )
+        # Get agent service and generate assessments
+        agent_service = current_app.agent_service
+        result = agent_service.create_assessment(data)
         
         return jsonify({
             'success': True,
@@ -76,4 +75,5 @@ def create_assessment():
         })
         
     except Exception as e:
+        print(f"❌ Assessment creation error: {e}")
         return jsonify({'error': str(e)}), 500

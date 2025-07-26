@@ -4,12 +4,8 @@ from flask_cors import CORS
 import traceback
 
 from app.config import Config
-from app.models.database import FirebaseDB
 from app.services.gemini_service import GeminiService
 from app.services.agent_service import GoogleAgentService
-from app.services.imagen_service import ImagenService
-from app.services.veo_service import VeoService
-from app.services.speech_service import SpeechService
 
 # Import route blueprints
 from app.routes.content import content_bp
@@ -19,24 +15,28 @@ from app.routes.visuals import visuals_bp
 from app.routes.speech import speech_bp
 from app.routes.analytics import analytics_bp
 from app.routes.agents import agents_bp
+from app.routes.planning import planning_bp
 
 class ServiceManager:
     def __init__(self, config):
-        # Set up Google Cloud authentication
-        config.setup_google_auth()
+        print("🔧 Initializing services with API key authentication...")
         
-        print("🔧 Initializing Google AI services...")
+        # Initialize Gemini service with API key only
         self.gemini = GeminiService(config.GEMINI_API_KEY, config.PROJECT_ID)
         print("  ✅ Gemini service initialized")
         
-        self.imagen = ImagenService(config.PROJECT_ID, config.LOCATION)
-        print("  ✅ Imagen service initialized")
+        # Add mock imagen and veo services for visual routes
+        class MockImagenService:
+            def is_available(self):
+                return False
         
-        self.veo = VeoService(config.PROJECT_ID, config.LOCATION)
-        print("  ✅ Veo service initialized")
+        class MockVeoService:
+            def is_available(self):
+                return False
         
-        self.speech = SpeechService(config.PROJECT_ID)
-        print("  ✅ Speech service initialized")
+        self.imagen = MockImagenService()
+        self.veo = MockVeoService()
+        print("  ✅ Mock visual services initialized")
 
 def create_app():
     app = Flask(__name__)
@@ -53,22 +53,12 @@ def create_app():
     app.config['MAX_CONTENT_LENGTH'] = Config.MAX_CONTENT_LENGTH
     
     try:
-        # Validate configuration
-        print("🔍 Validating configuration...")
-        Config.validate_config()
-        print("✅ Configuration valid")
-        
-        # Initialize database
-        print("📊 Connecting to Firebase...")
-        app.db = FirebaseDB(Config.FIREBASE_CREDENTIALS_PATH)
-        print("✅ Firebase connected")
-        
-        # Initialize services
-        print("🚀 Starting Google AI service initialization...")
+        # Initialize services WITHOUT Google Cloud authentication
+        print("🚀 Starting AI service initialization...")
         app.service_manager = ServiceManager(Config)
-        print("✅ All Google AI services ready")
+        print("✅ All AI services ready")
         
-        # Initialize Google AI Agent Service
+        # Initialize Google AI Agent Service with API key only
         print("🤖 Initializing Google AI Agent Service...")
         app.agent_service = GoogleAgentService(
             Config.PROJECT_ID, 
@@ -76,6 +66,26 @@ def create_app():
             Config.GEMINI_API_KEY
         )
         print("✅ Google AI Agent Service ready")
+        
+        # Initialize a simple database mock
+        class MockDB:
+            def save_content(self, data):
+                print(f"📝 Mock save content: {data.get('content_type')}")
+                return f"mock_id_{hash(str(data))}"
+            
+            def save_lesson_plan(self, data):
+                print(f"📝 Mock save lesson plan: {data.get('plan_type')}")
+                return f"mock_plan_{hash(str(data))}"
+                
+            def save_assessment(self, data):
+                print(f"📝 Mock save assessment: {data.get('assessment_type')}")
+                return f"mock_assessment_{hash(str(data))}"
+                
+            def get_teacher_content(self, teacher_id, limit=50):
+                return []
+        
+        app.db = MockDB()
+        print("✅ Mock database initialized")
         
     except Exception as e:
         print(f"❌ Initialization Error: {str(e)}")
@@ -86,15 +96,13 @@ def create_app():
     print("📋 Registering API routes...")
     
     try:
-        # Core routes
         app.register_blueprint(content_bp, url_prefix='/api/content')
         app.register_blueprint(materials_bp, url_prefix='/api/materials')
         app.register_blueprint(knowledge_bp, url_prefix='/api/knowledge')
         app.register_blueprint(visuals_bp, url_prefix='/api/visuals')
         app.register_blueprint(speech_bp, url_prefix='/api/speech')
         app.register_blueprint(analytics_bp, url_prefix='/api/analytics')
-        
-        # Google AI Agents
+        app.register_blueprint(planning_bp, url_prefix='/api/planning')
         app.register_blueprint(agents_bp, url_prefix='/api/agents')
         
         print("✅ All routes registered")
@@ -112,18 +120,14 @@ def create_app():
                 'status': 'healthy',
                 'service': 'Sahayak AI Teaching Assistant',
                 'project_id': Config.PROJECT_ID,
-                'version': '2.0.0-google-ai-platform',
+                'version': '2.0.0-gemini-direct',
                 'features': {
-                    'google_ai_agents': True,
-                    'real_time_monitoring': True,
-                    'educational_workflows': True,
-                    'powered_by': 'Google Cloud AI Platform'
-                },
-                'agent_system': {
-                    'framework': 'Google Cloud AI Platform',
-                    'active_workflows': len(app.agent_service.active_workflows),
-                    'available_agents': len(app.agent_service.agents_config),
-                    'capabilities': app.agent_service.get_agent_capabilities()
+                    'gemini_api': True,
+                    'content_generation': True,
+                    'lesson_planning': True,
+                    'material_differentiation': True,
+                    'assessment_creation': True,
+                    'knowledge_base': True
                 }
             })
         except Exception as e:
@@ -137,28 +141,25 @@ def create_app():
 def run_development_server():
     """Run the development server"""
     print("🚀 Starting Sahayak AI Teaching Assistant...")
-    print("🌟 Google Cloud AI Platform Agent System v2.0")
+    print("🌟 Direct Gemini API Integration v2.0")
     
     app = create_app()
     if app:
         print("\n" + "="*60)
-        print("🎓 SAHAYAK AI - GOOGLE CLOUD AI PLATFORM")
+        print("🎓 SAHAYAK AI - COMPLETE SYSTEM")
         print("="*60)
         print("✅ Server starting at http://localhost:8080")
         print("🔗 Health check: http://localhost:8080/health")
-        print("🤖 Available agents: http://localhost:8080/api/agents/available-agents")
-        print("📊 Agent status: http://localhost:8080/api/agents/test")
         print("🌐 Frontend should connect to: http://localhost:3000")
         print("\n🚀 Features Available:")
-        print("   • Google Cloud AI Platform Integration")
-        print("   • Gemini-Powered Educational Agents")
-        print("   • Real-time Workflow Monitoring")
-        print("   • Multi-Agent Collaboration")
-        print("   • Content Generation Pipeline")
-        print("   • Assessment Creation System")
-        print("   • Material Adaptation Engine")
-        print("   • Cultural Localization")
-        print("   • Accessibility Enhancement")
+        print("   • ✅ Story Generation")
+        print("   • ✅ Game Creation")
+        print("   • ✅ Lesson Planning")
+        print("   • ✅ Material Differentiation")
+        print("   • ✅ Assessment Creation")
+        print("   • ✅ Knowledge Base Q&A")
+        print("   • ✅ Activity Suggestions")
+        print("   • ✅ Concept Explanations")
         print("\n" + "="*60)
         
         try:

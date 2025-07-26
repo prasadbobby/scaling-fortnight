@@ -1,5 +1,4 @@
 import google.generativeai as genai
-from google.cloud import aiplatform
 from typing import Dict, List, Optional
 import json
 import base64
@@ -8,10 +7,13 @@ import io
 
 class GeminiService:
     def __init__(self, api_key: str, project_id: str):
+        # Configure Gemini with API key directly
         genai.configure(api_key=api_key)
-        aiplatform.init(project=project_id, location="us-central1")
         self.model = genai.GenerativeModel('gemini-2.5-flash')
         self.vision_model = genai.GenerativeModel('gemini-2.5-flash')
+        self.api_key = api_key
+        self.project_id = project_id
+        print(f"✅ Gemini initialized with API key: {api_key[:10]}...")
     
     def generate_content(self, prompt: str, language: str = 'en') -> str:
         """Generate text content using Gemini"""
@@ -19,6 +21,7 @@ class GeminiService:
             response = self.model.generate_content(prompt)
             return response.text
         except Exception as e:
+            print(f"❌ Gemini API Error: {e}")
             raise Exception(f"Content generation failed: {str(e)}")
     
     def analyze_image_and_generate(self, image_data: bytes, prompt: str) -> str:
@@ -28,6 +31,7 @@ class GeminiService:
             response = self.vision_model.generate_content([prompt, image])
             return response.text
         except Exception as e:
+            print(f"❌ Gemini Vision API Error: {e}")
             raise Exception(f"Image analysis failed: {str(e)}")
     
     def generate_differentiated_content(self, base_content: str, grade_levels: List[int], language: str) -> Dict[int, str]:
@@ -40,10 +44,11 @@ class GeminiService:
             Original Content: {base_content}
             
             Requirements:
-            - Use age-appropriate vocabulary
-            - Adjust complexity level
-            - Include relevant examples
+            - Use age-appropriate vocabulary for Grade {grade}
+            - Adjust complexity level appropriately
+            - Include relevant examples for Grade {grade} students
             - Keep cultural context intact
+            - Make it engaging and educational
             
             Generate adapted content in {language}:
             """
@@ -69,25 +74,29 @@ class GeminiService:
         - Uses examples from Indian context
         - Is culturally relevant
         - Keeps the explanation concise but complete
+        - Is engaging for students
         
         Respond in {language}:
         """
         
         return self.generate_content(prompt, language)
     
-    def generate_story(self, topic: str, language: str, cultural_context: str) -> str:
-        """Generate culturally relevant stories"""
+    def generate_story(self, topic: str, language: str, cultural_context: str, grade_level: int = 5) -> str:
+        """Generate culturally relevant educational stories"""
         prompt = f"""
-        Create an educational story in {language} about {topic} with {cultural_context} context.
+        Create an engaging educational story in {language} about {topic} with {cultural_context} context.
         
         Requirements:
-        - Make it engaging for children
-        - Include educational elements
-        - Use familiar cultural references
+        - Target audience: Grade {grade_level} students
+        - Make it educational and entertaining
+        - Include moral values and life lessons
+        - Use familiar cultural references from {cultural_context}
         - Keep it age-appropriate
-        - Length: 200-300 words
+        - Length: 300-500 words
+        - Include dialogue to make it engaging
+        - Have a clear beginning, middle, and end
         
-        Story in {language}:
+        Create a complete story in {language}:
         """
         
         return self.generate_content(prompt, language)

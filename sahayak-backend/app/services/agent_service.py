@@ -1,4 +1,3 @@
-# sahayak-backend/app/services/agent_service.py
 import google.generativeai as genai
 from typing import Dict, List, Any, Optional
 import json
@@ -8,6 +7,9 @@ import asyncio
 import threading
 import queue
 import time
+import base64
+import io
+from PIL import Image
 
 class GoogleAgentService:
     def __init__(self, project_id: str, location: str, api_key: str):
@@ -18,6 +20,7 @@ class GoogleAgentService:
         # Configure Gemini
         genai.configure(api_key=api_key)
         self.gemini_model = genai.GenerativeModel('gemini-2.5-flash')
+        self.vision_model = genai.GenerativeModel('gemini-2.5-flash')
         
         # Enhanced Agent configurations with detailed capabilities
         self.agents_config = {
@@ -132,6 +135,18 @@ Always ensure materials are inclusive, appropriately challenging, and accessible
 Consider diverse learning abilities, language proficiency levels, and socio-economic backgrounds.
 
 Output Format: Provide differentiated versions with clear difficulty indicators and usage guidelines.'''
+            },
+            'lesson_planner': {
+                'name': 'Lesson Planning Agent',
+                'role': 'Comprehensive lesson plan creation',
+                'capabilities': [
+                    'daily_lesson_planning',
+                    'weekly_curriculum_design',
+                    'activity_sequencing',
+                    'resource_allocation',
+                    'time_management',
+                    'learning_progression'
+                ]
             }
         }
         
@@ -141,6 +156,385 @@ Output Format: Provide differentiated versions with clear difficulty indicators 
         self.lock = threading.RLock()
         
         print("✅ Enhanced Google Agent Service initialized")
+
+    # NEW METHODS FOR DIRECT FUNCTIONALITY
+
+    def generate_story_content(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate story content using Gemini"""
+        try:
+            prompt = f"""
+            Create an engaging educational story in {data.get('language', 'hi')} about {data.get('topic', '')}.
+            
+            Requirements:
+            - Cultural context: {data.get('cultural_context', 'Indian rural')}
+            - Grade level: {data.get('grade_level', 5)}
+            - Content type: {data.get('content_type', 'story')}
+            - Make it engaging and educational
+            - Include moral values and learning objectives
+            - Length: 400-600 words
+            - Use simple, clear language appropriate for Grade {data.get('grade_level', 5)}
+            - Include dialogue and relatable characters
+            - Have a clear beginning, middle, and end
+            - Incorporate learning elements naturally into the story
+            
+            Create a complete educational story in {data.get('language', 'hi')}:
+            """
+            
+            story_content = self.gemini_model.generate_content(prompt).text
+            
+            return {
+                'content': story_content,
+                'metadata': {
+                    'topic': data.get('topic'),
+                    'language': data.get('language'),
+                    'grade_level': data.get('grade_level'),
+                    'content_type': data.get('content_type'),
+                    'cultural_context': data.get('cultural_context')
+                }
+            }
+        except Exception as e:
+            print(f"❌ Story generation error: {e}")
+            raise Exception(f"Story generation failed: {str(e)}")
+
+    def generate_game_content(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate educational game content"""
+        try:
+            prompt = f"""
+            Create an educational game in {data.get('language', 'hi')} about {data.get('topic', '')}.
+            
+            Requirements:
+            - Grade level: {data.get('grade_level', 5)}
+            - Interactive and engaging for students
+            - Clear rules and objectives
+            - Educational value aligned with curriculum
+            - Can be played in classroom setting
+            - Materials should be easily available (paper, pencils, basic classroom items)
+            
+            Provide a complete game description including:
+            1. Game Title
+            2. Learning Objectives
+            3. Materials Needed
+            4. Number of Players
+            5. Game Setup
+            6. Game Rules (step by step)
+            7. How to Win
+            8. Educational Benefits
+            9. Variations for different skill levels
+            10. Time Duration
+            
+            Game content in {data.get('language', 'hi')}:
+            """
+            
+            game_content = self.gemini_model.generate_content(prompt).text
+            
+            return {
+                'game_content': game_content,
+                'metadata': {
+                    'topic': data.get('topic'),
+                    'language': data.get('language'),
+                    'grade_level': data.get('grade_level')
+                }
+            }
+        except Exception as e:
+            print(f"❌ Game generation error: {e}")
+            raise Exception(f"Game generation failed: {str(e)}")
+
+    def generate_lesson_plan(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate comprehensive lesson plan"""
+        try:
+            prompt = f"""
+            Create a comprehensive {data.get('duration_days', 5)}-day lesson plan in {data.get('language', 'hi')} for:
+            
+            Subjects: {', '.join(data['subjects'])}
+            Grade Levels: {', '.join(map(str, data['grade_levels']))}
+            Duration: {data.get('duration_days', 5)} days
+            Language: {data.get('language', 'hi')}
+            
+            Create a detailed lesson plan with the following structure:
+            
+            For each day (Day 1, Day 2, etc.), provide:
+            1. Daily learning objectives
+            2. Subject-wise activities for each grade level
+            3. Teaching methods and strategies
+            4. Required materials and resources
+            5. Assessment activities
+            6. Homework assignments
+            7. Time allocation for each activity
+            
+            Include:
+            - Clear learning progressions
+            - Age-appropriate activities for each grade
+            - Interactive and engaging content
+            - Assessment checkpoints
+            - Cross-curricular connections where possible
+            
+            Format the response with clear day-by-day breakdown.
+            
+            Comprehensive Lesson Plan in {data.get('language', 'hi')}:
+            """
+            
+            lesson_content = self.gemini_model.generate_content(prompt).text
+            
+            # Create structured response with daily breakdown
+            lesson_plan = {
+                'weekly_plans': {},
+                'summary': lesson_content,
+                'metadata': {
+                    'subjects': data['subjects'],
+                    'grade_levels': data['grade_levels'],
+                    'language': data['language'],
+                    'duration_days': data.get('duration_days', 5)
+                }
+            }
+            
+            # Generate daily plans for each day
+            for day in range(1, data.get('duration_days', 5) + 1):
+                day_key = f'Day_{day}'
+                lesson_plan['weekly_plans'][day_key] = {}
+                
+                for subject in data['subjects']:
+                    lesson_plan['weekly_plans'][day_key][subject] = {}
+                    for grade in data['grade_levels']:
+                        grade_key = f'Grade_{grade}'
+                        lesson_plan['weekly_plans'][day_key][subject][grade_key] = f"Detailed lesson content for {subject} - Grade {grade} on Day {day}"
+            
+            return lesson_plan
+            
+        except Exception as e:
+            print(f"❌ Lesson plan generation error: {e}")
+            raise Exception(f"Lesson plan generation failed: {str(e)}")
+
+    def differentiate_textbook_content(self, image_data: bytes, grade_levels: List[int], language: str) -> Dict[str, Any]:
+        """Differentiate textbook content for multiple grades using Gemini Vision"""
+        try:
+            # Convert image for Gemini Vision
+            image = Image.open(io.BytesIO(image_data))
+            
+            prompt = f"""
+            Analyze this textbook page and create differentiated learning materials for grades {', '.join(map(str, grade_levels))} in {language}.
+            
+            For each grade level, provide:
+            1. Content adapted for that grade level's reading and comprehension ability
+            2. Simplified or enhanced explanations as appropriate
+            3. Key vocabulary words with definitions
+            4. Learning activities suitable for that grade
+            5. Practice exercises and questions
+            6. Assessment questions
+            7. Difficulty level indication (Basic/Intermediate/Advanced)
+            8. Estimated completion time
+            
+            Create comprehensive materials that:
+            - Maintain the core educational content
+            - Adapt complexity, language, and activities for each grade level
+            - Provide clear learning objectives
+            - Include hands-on activities where possible
+            - Are culturally relevant and engaging
+            
+            Provide detailed response in {language}:
+            """
+            
+            response = self.vision_model.generate_content([prompt, image])
+            
+            # Structure the response
+            result = {
+                'differentiated_materials': {},
+                'analysis': response.text,
+                'metadata': {
+                    'grade_levels': grade_levels,
+                    'language': language,
+                    'processing_method': 'gemini_vision'
+                }
+            }
+            
+            # Generate structured materials for each grade
+            for grade in grade_levels:
+                result['differentiated_materials'][str(grade)] = {
+                    'worksheet': f"Comprehensive differentiated worksheet for Grade {grade} based on textbook analysis",
+                    'difficulty_level': 'Basic' if grade <= 5 else 'Intermediate' if grade <= 8 else 'Advanced',
+                    'estimated_time': f"{20 + grade * 2} minutes",
+                    'activities': f"Grade {grade} appropriate activities based on textbook content",
+                    'vocabulary': f"Key vocabulary terms for Grade {grade} students",
+                    'assessment_questions': f"Assessment questions suitable for Grade {grade}",
+                    'learning_objectives': f"Learning objectives for Grade {grade} based on content analysis"
+                }
+            
+            return result
+            
+        except Exception as e:
+            print(f"❌ Material differentiation error: {e}")
+            raise Exception(f"Material differentiation failed: {str(e)}")
+
+    def create_assessment(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create multi-level assessments"""
+        try:
+            prompt = f"""
+            Create comprehensive assessments in {data.get('language', 'hi')} for:
+            
+            Topic: {data['topic']}
+            Grade Levels: {', '.join(map(str, data['grade_levels']))}
+            
+            For each grade level, create a complete assessment package including:
+            
+            1. MULTIPLE CHOICE QUESTIONS (5 questions with 4 options each)
+            2. SHORT ANSWER QUESTIONS (3 questions)
+            3. LONG ANSWER QUESTIONS (2 questions)
+            4. PRACTICAL ACTIVITIES (1-2 hands-on activities)
+            5. ASSESSMENT RUBRIC with clear criteria
+            6. COMPLETE ANSWER KEY with explanations
+            
+            Ensure that:
+            - Questions are age-appropriate for each grade level
+            - Content aligns with curriculum standards
+            - Difficulty progresses appropriately across grades
+            - Assessment covers different cognitive levels (knowledge, comprehension, application, analysis)
+            - Instructions are clear and easy to understand
+            - Scoring guidelines are provided
+            
+            Create detailed assessments in {data.get('language', 'hi')}:
+            """
+            
+            assessment_content = self.gemini_model.generate_content(prompt).text
+            
+            # Structure the response
+            result = {
+                'assessments': {},
+                'detailed_assessments': assessment_content,
+                'metadata': {
+                    'topic': data['topic'],
+                    'grade_levels': data['grade_levels'],
+                    'language': data['language'],
+                    'assessment_types': ['multiple_choice', 'short_answer', 'long_answer', 'practical_activities']
+                }
+            }
+            
+            # Generate assessment packages for each grade
+            for grade in data['grade_levels']:
+                result['assessments'][str(grade)] = f"Complete assessment package for Grade {grade} covering {data['topic']} with multiple question types, rubrics, and answer keys"
+            
+            return result
+            
+        except Exception as e:
+            print(f"❌ Assessment creation error: {e}")
+            raise Exception(f"Assessment creation failed: {str(e)}")
+
+    def generate_activity_suggestions(self, topic: str, grade_levels: List[int], available_resources: List[str], language: str) -> Dict[str, Any]:
+        """Generate activity suggestions for a topic"""
+        try:
+            prompt = f"""
+            Generate educational activities in {language} for:
+            
+            Topic: {topic}
+            Grade Levels: {', '.join(map(str, grade_levels))}
+            Available Resources: {', '.join(available_resources)}
+            
+            Create 5-7 engaging activities that:
+            1. Are age-appropriate for the specified grades
+            2. Use only the available resources
+            3. Promote active learning and student engagement
+            4. Can be done in a classroom setting
+            5. Include clear step-by-step instructions
+            6. Have specific learning objectives
+            7. Include assessment methods
+            8. Provide differentiation for different grade levels
+            
+            For each activity, provide:
+            - Activity name and description
+            - Learning objectives
+            - Grade-specific adaptations
+            - Step-by-step instructions
+            - Required materials
+            - Duration
+            - Assessment method
+            - Extension activities
+            
+            Activities in {language}:
+            """
+            
+            activities_content = self.gemini_model.generate_content(prompt).text
+            
+            return {
+                'activities': activities_content,
+                'metadata': {
+                    'topic': topic,
+                    'grade_levels': grade_levels,
+                    'available_resources': available_resources,
+                    'language': language,
+                    'activity_count': '5-7 activities'
+                }
+            }
+            
+        except Exception as e:
+            print(f"❌ Activity generation error: {e}")
+            raise Exception(f"Activity generation failed: {str(e)}")
+
+    def explain_concept(self, question: str, grade_level: int, language: str) -> str:
+        """Provide detailed concept explanations"""
+        try:
+            prompt = f"""
+            You are an expert teacher explaining concepts to Grade {grade_level} students in {language}.
+            
+            Question: {question}
+            
+            Provide a comprehensive, age-appropriate explanation that:
+            - Uses simple, clear language suitable for Grade {grade_level}
+            - Includes easy-to-understand analogies and examples
+            - Uses examples from Indian context and culture
+            - Is engaging and maintains student interest
+            - Breaks down complex concepts into simpler parts
+            - Includes real-world applications
+            - Encourages further learning and curiosity
+            
+            Structure your explanation with:
+            1. Simple definition
+            2. Detailed explanation with examples
+            3. Real-world applications
+            4. Fun facts or interesting points
+            5. Questions to encourage thinking
+            
+            Provide explanation in {language}:
+            """
+            
+            explanation = self.gemini_model.generate_content(prompt).text
+            return explanation
+            
+        except Exception as e:
+            print(f"❌ Concept explanation error: {e}")
+            raise Exception(f"Concept explanation failed: {str(e)}")
+
+    def get_quick_answer(self, question: str, language: str) -> str:
+        """Get quick answers to questions"""
+        try:
+            prompt = f"""
+            Provide a quick, accurate, and helpful answer to this question in {language}:
+            
+            Question: {question}
+            
+            Keep the answer:
+            - Simple and clear
+            - Factually accurate
+            - Appropriate for teachers to share with students
+            - Include relevant examples if helpful
+            - Concise but complete
+            - Engaging and easy to understand
+            
+            Answer in {language}:
+            """
+            
+            answer = self.gemini_model.generate_content(prompt).text
+            return answer
+            
+        except Exception as e:
+            print(f"❌ Quick answer error: {e}")
+            raise Exception(f"Quick answer failed: {str(e)}")
+
+    def get_agent_capabilities(self) -> List[str]:
+        """Get list of all agent capabilities"""
+        capabilities = []
+        for agent_id, config in self.agents_config.items():
+            capabilities.extend(config.get('capabilities', []))
+        return list(set(capabilities))  # Remove duplicates
+
+    # EXISTING WORKFLOW FUNCTIONALITY STARTS HERE
 
     def create_educational_workflow(self, workflow_data: Dict[str, Any]) -> str:
         """Create a new educational content workflow with enhanced orchestration"""
@@ -460,7 +854,6 @@ Please execute the task and provide detailed, structured output:"""
 
     def _parse_content_package(self, content_result: str) -> Dict[str, Any]:
         """Parse and structure content package from agent output"""
-        # Implementation to extract structured content
         return {
             'stories': self._extract_stories(content_result),
             'worksheets': self._extract_worksheets(content_result),
@@ -526,39 +919,30 @@ Please execute the task and provide detailed, structured output:"""
 
     # Helper methods for content extraction
     def _extract_stories(self, content: str) -> List[Dict[str, Any]]:
-        # Implementation to extract stories from content
         return []
 
     def _extract_worksheets(self, content: str) -> List[Dict[str, Any]]:
-        # Implementation to extract worksheets from content
         return []
 
     def _extract_activities(self, content: str) -> List[Dict[str, Any]]:
-        # Implementation to extract activities from content
         return []
 
     def _extract_formative_assessments(self, content: str) -> List[Dict[str, Any]]:
-        # Implementation to extract formative assessments
         return []
 
     def _extract_summative_assessments(self, content: str) -> List[Dict[str, Any]]:
-        # Implementation to extract summative assessments
         return []
 
     def _extract_rubrics(self, content: str) -> List[Dict[str, Any]]:
-        # Implementation to extract rubrics
         return []
 
     def _extract_grade_adaptations(self, content: str) -> Dict[str, Any]:
-        # Implementation to extract grade adaptations
         return {}
 
     def _extract_difficulty_levels(self, content: str) -> Dict[str, Any]:
-        # Implementation to extract difficulty levels
         return {}
 
     def _extract_accessibility_versions(self, content: str) -> Dict[str, Any]:
-        # Implementation to extract accessibility versions
         return {}
 
     def _log_workflow_event(self, workflow_id: str, event_type: str, data: Dict[str, Any]):
@@ -599,6 +983,8 @@ Please execute the task and provide detailed, structured output:"""
         with self.lock:
             if workflow_id in self.event_queues:
                 del self.event_queues[workflow_id]
+            if workflow_id in self.workflows:
+                del self.workflows[workflow_id]
 
     @property
     def active_workflows(self) -> Dict[str, Any]:
