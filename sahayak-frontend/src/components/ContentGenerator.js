@@ -1,9 +1,11 @@
 'use client';
 import { useState } from 'react';
-import { PenTool, Wand2, Download, Eye } from 'lucide-react';
-import apiService from '@/services/api';
+import { motion } from 'framer-motion';
+import { PenTool, Wand2, Download, Eye, Sparkles, FileText, Gamepad2 } from 'lucide-react';
+import api from '@/lib/api';
 
 export default function ContentGenerator({ teacherId }) {
+  const [activeTab, setActiveTab] = useState('story');
   const [formData, setFormData] = useState({
     topic: '',
     language: 'hi',
@@ -12,24 +14,39 @@ export default function ContentGenerator({ teacherId }) {
     grade_level: 5,
     include_visual: false
   });
+  const [gameData, setGameData] = useState({
+    topic: '',
+    grade_level: 5,
+    language: 'hi'
+  });
   const [generatedContent, setGeneratedContent] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const languages = {
-    hi: 'Hindi',
+    hi: 'हिंदी (Hindi)',
     en: 'English',
-    mr: 'Marathi',
-    bn: 'Bengali',
-    te: 'Telugu',
-    ta: 'Tamil',
-    gu: 'Gujarati'
+    mr: 'मराठी (Marathi)',
+    bn: 'বাংলা (Bengali)',
+    te: 'తెలుగు (Telugu)',
+    ta: 'தமிழ் (Tamil)',
+    gu: 'ગુજરાતી (Gujarati)',
+    kn: 'ಕನ್ನಡ (Kannada)',
+    ml: 'മലയാളം (Malayalam)',
+    pa: 'ਪੰਜਾਬੀ (Punjabi)'
   };
 
   const contentTypes = {
     story: 'Educational Story',
-    worksheet: 'Worksheet',
-    activity: 'Activity',
-    assessment: 'Assessment'
+    worksheet: 'Interactive Worksheet',
+    activity: 'Learning Activity',
+    assessment: 'Quick Assessment'
+  };
+
+  const culturalContexts = {
+    'Indian rural': 'Indian Rural Context',
+    'Indian urban': 'Indian Urban Context',
+    'Indian tribal': 'Indian Tribal Context',
+    'General': 'General Context'
   };
 
   const handleSubmit = async (e) => {
@@ -42,18 +59,8 @@ export default function ContentGenerator({ teacherId }) {
         teacher_id: teacherId
       };
 
-      let response;
-      if (formData.content_type === 'story') {
-        response = await apiService.post('/content/generate-story', payload);
-      } else {
-        response = await apiService.post('/content/generate-game', {
-          topic: formData.topic,
-          grade_level: formData.grade_level,
-          language: formData.language,
-          teacher_id: teacherId
-        });
-      }
-
+      const response = await api.generateContent(payload);
+      
       if (response.success) {
         setGeneratedContent(response.data);
       }
@@ -65,183 +72,290 @@ export default function ContentGenerator({ teacherId }) {
     }
   };
 
+  const handleGameGeneration = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const payload = {
+        ...gameData,
+        teacher_id: teacherId
+      };
+
+      const response = await api.generateGame(payload);
+      
+      if (response.success) {
+        setGeneratedContent(response.data);
+      }
+    } catch (error) {
+      console.error('Game generation failed:', error);
+      alert('Failed to generate game. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+    if (activeTab === 'story') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+      }));
+    } else {
+      setGameData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <PenTool className="text-blue-600" size={28} />
-        <h1 className="text-3xl font-bold text-gray-900">Content Generator</h1>
-      </div>
+    <div className="space-y-8">
+      {/* Header */}
+      <motion.div 
+        className="flex items-center gap-4"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg">
+          <PenTool className="text-white" size={24} />
+        </div>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Content Generator</h1>
+          <p className="text-gray-600">Create personalized educational content with AI</p>
+        </div>
+      </motion.div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Form Section */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <h2 className="text-xl font-semibold mb-4">Create New Content</h2>
-          
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Topic</label>
-              <input
-                type="text"
-                name="topic"
-                value={formData.topic}
-                onChange={handleInputChange}
-                placeholder="e.g., Solar System, Photosynthesis, Addition"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Language</label>
-                <select
-                  name="language"
-                  value={formData.language}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                >
-                  {Object.entries(languages).map(([code, name]) => (
-                    <option key={code} value={code}>{name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Grade Level</label>
-                <select
-                  name="grade_level"
-                  value={formData.grade_level}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                >
-                  {[1,2,3,4,5,6,7,8,9,10,11,12].map(grade => (
-                    <option key={grade} value={grade}>Grade {grade}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Content Type</label>
-              <select
-                name="content_type"
-                value={formData.content_type}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              >
-                {Object.entries(contentTypes).map(([type, name]) => (
-                  <option key={type} value={type}>{name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Cultural Context</label>
-              <select
-                name="cultural_context"
-                value={formData.cultural_context}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="Indian rural">Indian Rural</option>
-                <option value="Indian urban">Indian Urban</option>
-                <option value="Indian tribal">Indian Tribal</option>
-                <option value="General">General</option>
-              </select>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                name="include_visual"
-                checked={formData.include_visual}
-                onChange={handleInputChange}
-                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-              />
-              <label className="text-sm font-medium text-gray-700">Include Visual Aid</label>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading || !formData.topic}
-              className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-2 px-4 rounded-lg font-medium hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <div className="loading"></div>
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Wand2 size={20} />
-                  Generate Content
-                </>
-              )}
-            </button>
-          </form>
+      {/* Tab Navigation */}
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+        <div className="flex border-b border-gray-200">
+          <button
+            onClick={() => setActiveTab('story')}
+            className={`flex-1 px-6 py-4 font-semibold text-sm transition-all duration-200 ${
+              activeTab === 'story'
+                ? 'bg-gradient-to-r from-purple-50 to-pink-50 text-purple-600 border-b-2 border-purple-600'
+                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+            }`}
+          >
+            <FileText size={16} className="inline mr-2" />
+            Educational Content
+          </button>
+          <button
+            onClick={() => setActiveTab('game')}
+            className={`flex-1 px-6 py-4 font-semibold text-sm transition-all duration-200 ${
+              activeTab === 'game'
+                ? 'bg-gradient-to-r from-purple-50 to-pink-50 text-purple-600 border-b-2 border-purple-600'
+                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+            }`}
+          >
+            <Gamepad2 size={16} className="inline mr-2" />
+            Educational Games
+          </button>
         </div>
 
-        {/* Preview Section */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <h2 className="text-xl font-semibold mb-4">Generated Content</h2>
-          
-          {generatedContent ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Eye className="text-blue-600" size={20} />
-                  <span className="font-medium text-gray-700">Preview</span>
-                </div>
-                <button className="flex items-center gap-2 px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
-                  <Download size={16} />
-                  Export
-                </button>
-              </div>
-
-              <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
-                <pre className="whitespace-pre-wrap text-sm text-gray-800 font-mono">
-                  {generatedContent.content || generatedContent.game_content}
-                </pre>
-              </div>
-
-              {generatedContent.visual && (
-                <div className="border rounded-lg p-4">
-                  <h3 className="font-medium mb-2">Generated Visual</h3>
-                  <img 
-                    src={`data:image/png;base64,${generatedContent.visual}`}
-                    alt="Generated visual aid"
-                    className="max-w-full h-auto rounded-lg"
+        <div className="p-8">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+            {/* Form Section */}
+            <motion.div 
+              className="space-y-6"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              <h2 className="text-xl font-semibold text-gray-800">
+                {activeTab === 'story' ? 'Create Educational Content' : 'Generate Educational Game'}
+              </h2>
+              
+              <form onSubmit={activeTab === 'story' ? handleSubmit : handleGameGeneration} className="space-y-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">Topic</label>
+                  <input
+                    type="text"
+                    name="topic"
+                    value={activeTab === 'story' ? formData.topic : gameData.topic}
+                    onChange={handleInputChange}
+                    placeholder="e.g., Solar System, Photosynthesis, Addition & Subtraction"
+                    className="input-field"
+                    required
                   />
                 </div>
-              )}
 
-              {generatedContent.metadata && (
-                <div className="border rounded-lg p-4 bg-blue-50">
-                  <h3 className="font-medium mb-2 text-blue-800">Content Details</h3>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div><span className="font-medium">Topic:</span> {generatedContent.metadata.topic}</div>
-                    <div><span className="font-medium">Language:</span> {generatedContent.metadata.language}</div>
-                    <div><span className="font-medium">Grade:</span> {generatedContent.metadata.grade_level}</div>
-                    <div><span className="font-medium">Type:</span> {generatedContent.metadata.content_type}</div>
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-3">Language</label>
+                    <select
+                      name="language"
+                      value={activeTab === 'story' ? formData.language : gameData.language}
+                      onChange={handleInputChange}
+                      className="select-field"
+                    >
+                      {Object.entries(languages).map(([code, name]) => (
+                        <option key={code} value={code}>{name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-3">Grade Level</label>
+                    <select
+                      name="grade_level"
+                      value={activeTab === 'story' ? formData.grade_level : gameData.grade_level}
+                      onChange={handleInputChange}
+                      className="select-field"
+                    >
+                      {[1,2,3,4,5,6,7,8,9,10,11,12].map(grade => (
+                        <option key={grade} value={grade}>Grade {grade}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
+
+                {activeTab === 'story' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">Content Type</label>
+                      <select
+                        name="content_type"
+                        value={formData.content_type}
+                        onChange={handleInputChange}
+                        className="select-field"
+                      >
+                        {Object.entries(contentTypes).map(([type, name]) => (
+                          <option key={type} value={type}>{name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">Cultural Context</label>
+                      <select
+                        name="cultural_context"
+                        value={formData.cultural_context}
+                        onChange={handleInputChange}
+                        className="select-field"
+                      >
+                        {Object.entries(culturalContexts).map(([context, name]) => (
+                          <option key={context} value={context}>{name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                      <input
+                        type="checkbox"
+                        name="include_visual"
+                        checked={formData.include_visual}
+                        onChange={handleInputChange}
+                        className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                      />
+                      <label className="text-sm font-semibold text-blue-800">Include AI-Generated Visual Aid</label>
+                    </div>
+                  </>
+                )}
+
+                <motion.button
+                  type="submit"
+                  disabled={loading || (activeTab === 'story' ? !formData.topic : !gameData.topic)}
+                  className="btn btn-primary w-full"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  {loading ? (
+                    <>
+                      <div className="loading"></div>
+                      Generating with AI...
+                    </>
+                  ) : (
+                    <>
+                      <Wand2 size={20} />
+                      Generate {activeTab === 'story' ? 'Content' : 'Game'}
+                      <Sparkles size={16} className="ml-1" />
+                    </>
+                  )}
+                </motion.button>
+              </form>
+            </motion.div>
+
+            {/* Preview Section */}
+            <motion.div 
+              className="space-y-6"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-gray-800">Generated Content</h2>
+                {generatedContent && (
+                  <button className="btn btn-secondary">
+                    <Download size={16} />
+                    Export
+                  </button>
+                )}
+              </div>
+              
+              {generatedContent ? (
+                <motion.div 
+                  className="space-y-6"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <div className="flex items-center gap-3 p-4 bg-green-50 rounded-xl border border-green-200">
+                    <Eye className="text-green-600" size={20} />
+                    <span className="font-semibold text-green-800">Content Generated Successfully!</span>
+                  </div>
+
+                  <div className="glass-card p-6 max-h-96 overflow-y-auto">
+                    <pre className="whitespace-pre-wrap text-sm text-gray-800 font-mono leading-relaxed">
+                      {generatedContent.content || generatedContent.game_content}
+                    </pre>
+                  </div>
+
+                  {generatedContent.visual && (
+                    <div className="glass-card p-6">
+                      <h3 className="font-semibold mb-4 text-gray-800">Generated Visual Aid</h3>
+                      <img 
+                        src={`data:image/png;base64,${generatedContent.visual}`}
+                        alt="Generated visual aid"
+                        className="w-full h-auto rounded-xl shadow-md"
+                      />
+                    </div>
+                  )}
+
+                  {generatedContent.metadata && (
+                    <div className="glass-card p-6 bg-gradient-to-r from-blue-50 to-purple-50">
+                      <h3 className="font-semibold mb-4 text-blue-800">Content Details</h3>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-600">Topic:</span> 
+                          <span className="text-gray-800">{generatedContent.metadata.topic}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-600">Language:</span> 
+                          <span className="text-gray-800">{languages[generatedContent.metadata.language]}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-600">Grade:</span> 
+                          <span className="text-gray-800">Grade {generatedContent.metadata.grade_level}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-600">Type:</span> 
+                          <span className="text-gray-800 capitalize">{generatedContent.metadata.content_type}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              ) : (
+                <div className="text-center text-gray-500 py-16 glass-card">
+                  <PenTool size={64} className="mx-auto mb-6 text-gray-300" />
+                  <h3 className="text-lg font-semibold mb-2">Ready to Create!</h3>
+                  <p className="text-sm mb-4">Your AI-generated content will appear here</p>
+                  <p className="text-xs text-gray-400">Fill out the form and click "Generate" to get started</p>
+                </div>
               )}
-            </div>
-          ) : (
-            <div className="text-center text-gray-500 py-12">
-              <PenTool size={48} className="mx-auto mb-4 text-gray-300" />
-              <p>Your generated content will appear here</p>
-              <p className="text-sm">Fill out the form and click "Generate Content"</p>
-            </div>
-          )}
+            </motion.div>
+          </div>
         </div>
       </div>
     </div>

@@ -1,7 +1,8 @@
 'use client';
 import { useState } from 'react';
-import { Layers, Upload, FileText, Download, Eye } from 'lucide-react';
-import apiService from '@/services/api';
+import { motion } from 'framer-motion';
+import { Layers, Upload, FileText, Download, Eye, CheckCircle, Clock } from 'lucide-react';
+import api from '@/lib/api';
 
 export default function MaterialDifferentiator({ teacherId }) {
   const [activeTab, setActiveTab] = useState('textbook');
@@ -17,6 +18,16 @@ export default function MaterialDifferentiator({ teacherId }) {
   });
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  const languages = {
+    hi: 'हिंदी (Hindi)',
+    en: 'English',
+    mr: 'मराठी (Marathi)',
+    bn: 'বাংলা (Bengali)',
+    te: 'తెলুগু (Telugu)',
+    ta: 'தமிழ் (Tamil)',
+    gu: 'ગુજરાતી (Gujarati)'
+  };
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
@@ -53,7 +64,7 @@ export default function MaterialDifferentiator({ teacherId }) {
         formData.append('grade_levels', grade);
       });
 
-      const response = await apiService.upload('/materials/differentiate-textbook', formData);
+      const response = await api.differentiateTextbook(formData);
       
       if (response.success) {
         setResults(response.data);
@@ -74,7 +85,7 @@ export default function MaterialDifferentiator({ teacherId }) {
 
     setLoading(true);
     try {
-      const response = await apiService.post('/materials/create-assessment', {
+      const response = await api.createAssessment({
         ...assessmentData,
         teacher_id: teacherId
       });
@@ -91,21 +102,31 @@ export default function MaterialDifferentiator({ teacherId }) {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Layers className="text-purple-600" size={28} />
-        <h1 className="text-3xl font-bold text-gray-900">Material Differentiator</h1>
-      </div>
+    <div className="space-y-8">
+      {/* Header */}
+      <motion.div 
+        className="flex items-center gap-4"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl flex items-center justify-center shadow-lg">
+          <Layers className="text-white" size={24} />
+        </div>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Material Differentiator</h1>
+          <p className="text-gray-600">Create differentiated materials for multi-grade classrooms</p>
+        </div>
+      </motion.div>
 
       {/* Tab Navigation */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
         <div className="flex border-b border-gray-200">
           <button
             onClick={() => setActiveTab('textbook')}
-            className={`px-6 py-3 font-medium text-sm rounded-t-xl transition-colors ${
+            className={`flex-1 px-6 py-4 font-semibold text-sm transition-all duration-200 ${
               activeTab === 'textbook'
-                ? 'bg-purple-50 text-purple-600 border-b-2 border-purple-600'
-                : 'text-gray-600 hover:text-gray-800'
+                ? 'bg-gradient-to-r from-orange-50 to-red-50 text-orange-600 border-b-2 border-orange-600'
+                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
             }`}
           >
             <FileText size={16} className="inline mr-2" />
@@ -113,10 +134,10 @@ export default function MaterialDifferentiator({ teacherId }) {
           </button>
           <button
             onClick={() => setActiveTab('assessment')}
-            className={`px-6 py-3 font-medium text-sm rounded-t-xl transition-colors ${
+            className={`flex-1 px-6 py-4 font-semibold text-sm transition-all duration-200 ${
               activeTab === 'assessment'
-                ? 'bg-purple-50 text-purple-600 border-b-2 border-purple-600'
-                : 'text-gray-600 hover:text-gray-800'
+                ? 'bg-gradient-to-r from-orange-50 to-red-50 text-orange-600 border-b-2 border-orange-600'
+                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
             }`}
           >
             <FileText size={16} className="inline mr-2" />
@@ -124,14 +145,19 @@ export default function MaterialDifferentiator({ teacherId }) {
           </button>
         </div>
 
-        <div className="p-6">
+        <div className="p-8">
           {activeTab === 'textbook' ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
               {/* Textbook Upload Section */}
-              <div className="space-y-4">
-                <h2 className="text-xl font-semibold">Upload Textbook Page</h2>
+              <motion.div 
+                className="space-y-6"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                <h2 className="text-xl font-bold text-gray-800">Upload Textbook Page</h2>
                 
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-purple-400 transition-colors">
+                <div className="border-2 border-dashed border-gray-300 rounded-2xl p-8 text-center hover:border-orange-400 transition-colors group">
                   <input
                     type="file"
                     accept="image/*"
@@ -140,60 +166,68 @@ export default function MaterialDifferentiator({ teacherId }) {
                     id="textbook-upload"
                   />
                   <label htmlFor="textbook-upload" className="cursor-pointer">
-                    <Upload size={48} className="mx-auto mb-4 text-gray-400" />
-                    <p className="text-gray-600">Click to upload textbook page</p>
-                    <p className="text-sm text-gray-500 mt-1">Supports JPG, PNG, PDF</p>
+                    <Upload size={48} className="mx-auto mb-4 text-gray-400 group-hover:text-orange-500 transition-colors" />
+                    <p className="text-gray-600 font-medium mb-2">Click to upload textbook page</p>
+                    <p className="text-sm text-gray-500">Supports JPG, PNG, PDF</p>
                   </label>
                 </div>
 
                 {textbookData.image && (
-                  <div className="border rounded-lg p-4">
-                    <p className="text-sm font-medium text-green-600 mb-2">
-                      ✓ File uploaded: {textbookData.image.name}
-                    </p>
-                  </div>
+                  <motion.div 
+                    className="border border-green-200 rounded-xl p-4 bg-green-50"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="text-green-600" size={20} />
+                      <p className="text-sm font-semibold text-green-600">
+                        File uploaded: {textbookData.image.name}
+                      </p>
+                    </div>
+                  </motion.div>
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Target Grade Levels</label>
-                  <div className="grid grid-cols-4 gap-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">Target Grade Levels</label>
+                  <div className="grid grid-cols-4 gap-3">
                     {[1,2,3,4,5,6,7,8,9,10,11,12].map(grade => (
-                      <label key={grade} className="flex items-center gap-1">
+                      <label key={grade} className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 transition-colors">
                         <input
                           type="checkbox"
                           checked={textbookData.grade_levels.includes(grade)}
                           onChange={() => handleGradeToggle(grade, 'textbook')}
-                          className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                          className="w-4 h-4 text-orange-600 rounded focus:ring-orange-500"
                         />
-                        <span className="text-sm text-gray-700">{grade}</span>
+                        <span className="text-sm font-medium text-gray-700">{grade}</span>
                       </label>
                     ))}
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Language</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">Language</label>
                   <select
                     value={textbookData.language}
                     onChange={(e) => setTextbookData(prev => ({ ...prev, language: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    className="select-field"
                   >
-                    <option value="hi">Hindi</option>
-                    <option value="en">English</option>
-                    <option value="mr">Marathi</option>
-                    <option value="bn">Bengali</option>
+                    {Object.entries(languages).map(([code, name]) => (
+                      <option key={code} value={code}>{name}</option>
+                    ))}
                   </select>
                 </div>
 
-                <button
+                <motion.button
                   onClick={processTextbook}
                   disabled={loading || !textbookData.image}
-                  className="w-full bg-gradient-to-r from-purple-500 to-pink-600 text-white py-2 px-4 rounded-lg font-medium hover:shadow-lg transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="btn btn-primary w-full"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                 >
                   {loading ? (
                     <>
                       <div className="loading"></div>
-                      Processing...
+                      Processing with AI...
                     </>
                   ) : (
                     <>
@@ -201,98 +235,127 @@ export default function MaterialDifferentiator({ teacherId }) {
                       Differentiate Material
                     </>
                   )}
-                </button>
-              </div>
+                </motion.button>
+              </motion.div>
 
               {/* Preview Section */}
-              <div className="space-y-4">
-                <h2 className="text-xl font-semibold">Differentiated Materials</h2>
+              <motion.div 
+                className="space-y-6"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <h2 className="text-xl font-bold text-gray-800">Differentiated Materials</h2>
                 
                 {results && results.differentiated_materials ? (
-                  <div className="space-y-4 max-h-96 overflow-y-auto">
-                    {Object.entries(results.differentiated_materials).map(([grade, material]) => (
-                      <div key={grade} className="border rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="font-medium text-gray-800">Grade {grade}</h3>
-                          <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">
-                            {material.difficulty_level}
-                          </span>
+                  <div className="space-y-4 max-h-96 overflow-y-auto custom-scrollbar">
+                    {Object.entries(results.differentiated_materials).map(([grade, material], index) => (
+                      <motion.div 
+                        key={grade} 
+                        className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 * index }}
+                      >
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="font-bold text-gray-800">Grade {grade}</h3>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs px-3 py-1 rounded-full font-medium ${
+                              material.difficulty_level === 'Basic' ? 'bg-green-100 text-green-800' :
+                              material.difficulty_level === 'Intermediate' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {material.difficulty_level}
+                            </span>
+                            <div className="flex items-center gap-1 text-gray-500">
+                              <Clock size={14} />
+                              <span className="text-xs">{material.estimated_time}</span>
+                            </div>
+                          </div>
                         </div>
-                        <p className="text-sm text-gray-600 mb-2">
-                          Estimated time: {material.estimated_time}
-                        </p>
-                        <div className="bg-gray-50 rounded p-3 text-sm max-h-32 overflow-y-auto">
-                          {material.worksheet.substring(0, 200)}...
+                        <div className="bg-gray-50 rounded-lg p-4 text-sm max-h-32 overflow-y-auto custom-scrollbar">
+                          {material.worksheet.substring(0, 300)}...
                         </div>
-                      </div>
+                        <button className="mt-3 text-xs text-orange-600 hover:text-orange-800 flex items-center gap-1 font-medium">
+                          <Eye size={12} />
+                          View Full Material
+                        </button>
+                      </motion.div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center text-gray-500 py-12">
-                    <Layers size={48} className="mx-auto mb-4 text-gray-300" />
-                    <p>Differentiated materials will appear here</p>
-                    <p className="text-sm">Upload a textbook page to get started</p>
+                  <div className="text-center text-gray-500 py-16">
+                    <Layers size={64} className="mx-auto mb-6 text-gray-300" />
+                    <h3 className="text-lg font-semibold mb-2">Ready to Differentiate!</h3>
+                    <p className="text-sm mb-4">Differentiated materials will appear here</p>
+                    <p className="text-xs text-gray-400">Upload a textbook page to get started</p>
                   </div>
                 )}
-              </div>
+              </motion.div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
               {/* Assessment Creation Section */}
-              <div className="space-y-4">
-                <h2 className="text-xl font-semibold">Create Multi-Level Assessment</h2>
+              <motion.div 
+                className="space-y-6"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                <h2 className="text-xl font-bold text-gray-800">Create Multi-Level Assessment</h2>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Topic</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">Topic</label>
                   <input
                     type="text"
                     value={assessmentData.topic}
                     onChange={(e) => setAssessmentData(prev => ({ ...prev, topic: e.target.value }))}
                     placeholder="e.g., Fractions, Photosynthesis, World War II"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    className="input-field"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Grade Levels</label>
-                  <div className="grid grid-cols-4 gap-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">Grade Levels</label>
+                  <div className="grid grid-cols-4 gap-3">
                     {[1,2,3,4,5,6,7,8,9,10,11,12].map(grade => (
-                      <label key={grade} className="flex items-center gap-1">
+                      <label key={grade} className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 transition-colors">
                         <input
                           type="checkbox"
                           checked={assessmentData.grade_levels.includes(grade)}
                           onChange={() => handleGradeToggle(grade, 'assessment')}
-                          className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                          className="w-4 h-4 text-orange-600 rounded focus:ring-orange-500"
                         />
-                        <span className="text-sm text-gray-700">{grade}</span>
+                        <span className="text-sm font-medium text-gray-700">{grade}</span>
                       </label>
                     ))}
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Language</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">Language</label>
                   <select
                     value={assessmentData.language}
                     onChange={(e) => setAssessmentData(prev => ({ ...prev, language: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    className="select-field"
                   >
-                    <option value="hi">Hindi</option>
-                    <option value="en">English</option>
-                    <option value="mr">Marathi</option>
-                    <option value="bn">Bengali</option>
+                    {Object.entries(languages).map(([code, name]) => (
+                      <option key={code} value={code}>{name}</option>
+                    ))}
                   </select>
                 </div>
 
-                <button
+                <motion.button
                   onClick={createAssessment}
                   disabled={loading || !assessmentData.topic}
-                  className="w-full bg-gradient-to-r from-purple-500 to-pink-600 text-white py-2 px-4 rounded-lg font-medium hover:shadow-lg transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="btn btn-primary w-full"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                 >
                   {loading ? (
                     <>
                       <div className="loading"></div>
-                      Creating...
+                      Creating with AI...
                     </>
                   ) : (
                     <>
@@ -300,36 +363,48 @@ export default function MaterialDifferentiator({ teacherId }) {
                       Create Assessment
                     </>
                   )}
-                </button>
-              </div>
+                </motion.button>
+              </motion.div>
 
               {/* Assessment Preview */}
-              <div className="space-y-4">
-                <h2 className="text-xl font-semibold">Generated Assessments</h2>
+              <motion.div 
+                className="space-y-6"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <h2 className="text-xl font-bold text-gray-800">Generated Assessments</h2>
                 
                 {results && results.assessments ? (
-                  <div className="space-y-4 max-h-96 overflow-y-auto">
-                    {Object.entries(results.assessments).map(([grade, assessment]) => (
-                      <div key={grade} className="border rounded-lg p-4">
-                        <h3 className="font-medium text-gray-800 mb-2">Grade {grade} Assessment</h3>
-                        <div className="bg-gray-50 rounded p-3 text-sm max-h-32 overflow-y-auto">
-                          {assessment.substring(0, 200)}...
+                  <div className="space-y-4 max-h-96 overflow-y-auto custom-scrollbar">
+                    {Object.entries(results.assessments).map(([grade, assessment], index) => (
+                      <motion.div 
+                        key={grade} 
+                        className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 * index }}
+                      >
+                        <h3 className="font-bold text-gray-800 mb-4">Grade {grade} Assessment</h3>
+                        <div className="bg-gray-50 rounded-lg p-4 text-sm max-h-32 overflow-y-auto custom-scrollbar">
+                          {assessment.substring(0, 300)}...
                         </div>
-                        <button className="mt-2 text-xs text-purple-600 hover:text-purple-800 flex items-center gap-1">
+                        <button className="mt-3 text-xs text-orange-600 hover:text-orange-800 flex items-center gap-1 font-medium">
                           <Eye size={12} />
                           View Full Assessment
                         </button>
-                      </div>
+                      </motion.div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center text-gray-500 py-12">
-                    <FileText size={48} className="mx-auto mb-4 text-gray-300" />
-                    <p>Generated assessments will appear here</p>
-                    <p className="text-sm">Enter a topic to create assessments</p>
+                  <div className="text-center text-gray-500 py-16">
+                    <FileText size={64} className="mx-auto mb-6 text-gray-300" />
+                    <h3 className="text-lg font-semibold mb-2">Ready to Assess!</h3>
+                    <p className="text-sm mb-4">Generated assessments will appear here</p>
+                    <p className="text-xs text-gray-400">Enter a topic to create assessments</p>
                   </div>
                 )}
-              </div>
+              </motion.div>
             </div>
           )}
         </div>
