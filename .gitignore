@@ -10,3 +10,8 @@ dist/
 coverage/
 *.log
 .DS_Store
+
+.next
+.vscode/
+.idea/
+.env.local
