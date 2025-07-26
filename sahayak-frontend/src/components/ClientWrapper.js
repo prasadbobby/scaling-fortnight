@@ -13,7 +13,7 @@ import VisualGenerator from '@/components/VisualGenerator';
 import Analytics from '@/components/Analytics';
 import ContentLibrary from '@/components/ContentLibrary';
 import KnowledgeBase from '@/components/KnowledgeBase';
-import AgenticWorkflow from '@/components/AgenticWorkflow';
+import GoogleADKWorkflow from '@/components/GoogleADKWorkflow'; // Updated import
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { 
   BookOpen, PenTool, Layers, Mic, Image, BarChart3, 
@@ -28,7 +28,7 @@ export default function ClientWrapper() {
 
   const navigationItems = [
     { id: 'dashboard', label: 'Dashboard', icon: HomeIcon, color: 'blue' },
-    { id: 'agentic', label: 'Agentic Workflow', icon: Workflow, color: 'purple' },
+    { id: 'agentic', label: 'Google ADK Agents', icon: Workflow, color: 'purple' }, // Updated label
     { id: 'content', label: 'Content Generator', icon: PenTool, color: 'green' },
     { id: 'lessons', label: 'Lesson Planner', icon: BookOpen, color: 'orange' },
     { id: 'materials', label: 'Material Differentiator', icon: Layers, color: 'red' },
@@ -57,7 +57,7 @@ export default function ClientWrapper() {
     const props = { teacherId };
     const components = {
       dashboard: Dashboard,
-      agentic: AgenticWorkflow,
+      agentic: GoogleADKWorkflow, // Updated component reference
       content: ContentGenerator,
       lessons: LessonPlanner,
       materials: MaterialDifferentiator,

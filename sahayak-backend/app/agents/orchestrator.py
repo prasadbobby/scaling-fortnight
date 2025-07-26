@@ -1,4 +1,4 @@
-# sahayak-backend/app/agents/orchestrator.py
+# sahayak-backend/app/agents/orchestrator.py - Updated version
 import asyncio
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timezone
@@ -56,7 +56,6 @@ class AgentOrchestrator:
             workflow_data = workflow_message.content['workflow_data']
             workflow_type = workflow_data.get('type')
             
-            # Log workflow start
             if self.event_logger:
                 self.event_logger('workflow_analysis_started', {
                     'workflow_type': workflow_type,
@@ -178,7 +177,7 @@ class AgentOrchestrator:
                                     'agent_id': group[i]['agent'],
                                     'agent_name': self.agents[group[i]['agent']].name,
                                     'step': group[i]['step'],
-                                    'result_preview': str(result)[:100] + '...' if len(str(result)) > 100 else str(result)
+                                    'result_summary': f"Completed {group[i]['task']}"
                                 })
             
             return results
@@ -195,7 +194,6 @@ class AgentOrchestrator:
         try:
             agent = self.agents[step['agent']]
             
-            # Log progress
             if self.event_logger:
                 self.event_logger('agent_progress', {
                     'agent_id': step['agent'],
@@ -227,7 +225,6 @@ class AgentOrchestrator:
                 message_type='task'
             )
             
-            # Log progress
             if self.event_logger:
                 self.event_logger('agent_progress', {
                     'agent_id': step['agent'],
@@ -255,7 +252,6 @@ class AgentOrchestrator:
             
             for step in plan:
                 if step['step'] not in completed_steps:
-                    # Check if all dependencies are satisfied
                     dependencies_satisfied = all(dep in completed_steps for dep in step['dependencies'])
                     
                     if dependencies_satisfied:
@@ -265,7 +261,6 @@ class AgentOrchestrator:
                 groups.append(current_group)
                 completed_steps.update(step['step'] for step in current_group)
             else:
-                # Break infinite loop if no progress
                 break
         
         return groups
