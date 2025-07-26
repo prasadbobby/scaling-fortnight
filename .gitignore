@@ -1,0 +1,12 @@
+.env
+firebase_config.json
+__pycache__/
+*.pyc
+logs/
+test/
+package-lock.json
+node_modules/
+dist/
+coverage/
+*.log
+.DS_Store
