@@ -1,452 +1,453 @@
+// frontend/components/ui/VisualGenerator.js
 'use client';
 import { useState } from 'react';
-import { Image, Video, Wand2, Download, Eye, AlertCircle } from 'lucide-react';
-import api from '@/lib/api';
 
+export default function VisualGenerator({ resourceId, topic, description }) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [visualAid, setVisualAid] = useState(null);
+  const [showVisualAid, setShowVisualAid] = useState(false);
+  const [error, setError] = useState(null);
+  const [customPrompt, setCustomPrompt] = useState(description || `Visual diagram explaining ${topic}`);
 
-export default function VisualGenerator({ teacherId }) {
-  const [activeTab, setActiveTab] = useState('diagram');
-  const [diagramData, setDiagramData] = useState({
-    concept: '',
-    grade_level: 5
-  });
-  const [visualData, setVisualData] = useState({
-    description: '',
-    style: 'simple line drawing'
-  });
-  const [videoData, setVideoData] = useState({
-    description: '',
-    duration: 30
-  });
-  const [generatedContent, setGeneratedContent] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [serviceStatus, setServiceStatus] = useState(null);
+  const generateVisualAid = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      console.log('🎨 Generating visual aid for:', topic);
 
-  const visualStyles = [
-    'simple line drawing',
-    'colorful illustration',
-    'scientific diagram',
-    'cartoon style',
-    'realistic illustration',
-    'minimalist design'
-  ];
+      // Get API key from environment variables
+      const apiKey = 'AIzaSyBMMamcM2phoUTdG6HX15tS93IpVP0lEfY';
+      
+      if (!apiKey) {
+        throw new Error('Gemini API key not configured. Please add NEXT_PUBLIC_GEMINI_API_KEY to your environment variables.');
+      }
 
-const checkServiceStatus = async () => {
-  try {
-    const response = await api.get('/visuals/service-status');
-    if (response.success) {
-      setServiceStatus(response.services);
+      // Enhanced prompt for blackboard-style drawings
+      const enhancedPrompt = `Create a simple, clear line drawing suitable for a teacher to replicate on a blackboard for students.
+
+Description: ${customPrompt}
+
+Requirements:
+- Simple black lines on white background
+- Easy to draw with chalk on a blackboard
+- Clear labels and annotations
+- Educational and age-appropriate
+- Minimalist style that can be easily reproduced by hand
+- Include important labels and arrows where needed
+- Make it visually engaging but not cluttered
+- Use simple geometric shapes and lines
+- Ensure text is large and readable
+- Line art style, educational diagram, blackboard-friendly
+
+Please create a simple educational diagram that a teacher can easily recreate on a blackboard.`;
+
+      console.log('📡 Calling Gemini API for image generation...');
+
+      // Correct API format for Gemini 2.0 Flash Image Generation
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent`, {
+        method: 'POST',
+        headers: {
+          'x-goog-api-key': apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: enhancedPrompt
+            }]
+          }],
+          generationConfig: {
+            responseModalities: ["TEXT", "IMAGE"]
+          }
+        })
+      });
+
+      console.log('📡 Gemini API response status:', response.status);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ Gemini API error:', errorData);
+        throw new Error(`Gemini API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Gemini API response received:', data);
+
+      // Extract the generated image from the response
+      let imageData = null;
+      if (data.candidates && data.candidates[0]) {
+        const candidate = data.candidates[0];
+        
+        // Check for inline data in parts
+        if (candidate.content && candidate.content.parts) {
+          for (const part of candidate.content.parts) {
+            if (part.inlineData && part.inlineData.mimeType && part.inlineData.mimeType.startsWith('image/')) {
+              imageData = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+              console.log('✅ Found image data in response');
+              break;
+            }
+          }
+        }
+      }
+
+      if (!imageData) {
+        console.error('❌ No image data found in response:', data);
+        // Let's also check if there's any text response that might contain image data
+        if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
+          const textParts = data.candidates[0].content.parts.filter(part => part.text);
+          if (textParts.length > 0) {
+            console.log('📝 Text response from Gemini:', textParts[0].text);
+          }
+        }
+        throw new Error('No image data received from Gemini API. The model may have returned text instead of an image.');
+      }
+
+      // Create the visual aid object
+      const generatedVisualAid = {
+        title: `Visual Aid: ${topic}`,
+        description: customPrompt,
+        image_data: imageData,
+        materials_needed: [
+          'Blackboard/Whiteboard',
+          'Chalk/Markers',
+          'Ruler (for straight lines)',
+          'Eraser',
+          'Compass (if circles needed)'
+        ],
+        step_by_step_instructions: [
+          'Start with the main outline using simple geometric shapes',
+          'Add the primary elements using basic lines and curves',
+          'Include important labels and text in large, clear letters',
+          'Add arrows to show relationships and flow',
+          'Add details gradually, keeping the design simple',
+          'Review and adjust for clarity and visibility from the back of the classroom'
+        ],
+        teaching_points: [
+          `Use this visual to explain key concepts about ${topic}`,
+          'Point to different parts while explaining each element',
+          'Ask students to identify different components',
+          'Encourage students to draw their own simplified version',
+          `Connect the visual elements to real-world examples of ${topic}`,
+          'Use the diagram as a reference throughout the lesson'
+        ],
+        student_interaction: `Engage students by having them help you draw parts of the diagram, ask them to identify different elements, explain what each part represents, and encourage them to create their own versions in their notebooks.`,
+        grade_levels: [1, 2, 3, 4, 5],
+        subject: topic
+      };
+
+      setVisualAid(generatedVisualAid);
+      setShowVisualAid(true);
+      console.log('✅ Visual aid generated and set successfully');
+
+    } catch (error) {
+      console.error('❌ Error generating visual aid:', error);
+      setError(error.message);
+    } finally {
+      setIsLoading(false);
     }
-  } catch (error) {
-    console.error('Failed to check service status:', error);
-  }
-};
+  };
 
-  useState(() => {
-    checkServiceStatus();
-  }, []);
-
-const generateDiagram = async () => {
-  if (!diagramData.concept) {
-    alert('Please enter a concept');
-    return;
-  }
-
-  setLoading(true);
-  try {
-    const response = await api.generateDiagram(diagramData);
-    
-    if (response.success) {
-      setGeneratedContent({
-        type: 'image',
-        data: response.data
-      });
-    } else {
-      setGeneratedContent({
-        type: 'fallback',
-        data: response
-      });
+  const downloadImage = async () => {
+    try {
+      if (!visualAid?.image_data) return;
+      
+      // Handle different image data formats
+      let imageUrl = visualAid.image_data;
+      
+      if (imageUrl.startsWith('http')) {
+        // If it's a URL, fetch it first
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        imageUrl = URL.createObjectURL(blob);
+      }
+      
+      const link = document.createElement('a');
+      link.href = imageUrl;
+      link.download = `visual-aid-${topic.replace(/\s+/g, '-').toLowerCase()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up object URL if we created one
+      if (imageUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(imageUrl);
+      }
+      
+      console.log('✅ Image downloaded successfully');
+    } catch (error) {
+      console.error('Error downloading image:', error);
     }
-  } catch (error) {
-    console.error('Diagram generation failed:', error);
-    alert('Failed to generate diagram. Please try again.');
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
-const generateVisualAid = async () => {
-  if (!visualData.description) {
-    alert('Please enter a description');
-    return;
-  }
-
-  setLoading(true);
-  try {
-    const response = await api.generateVisual(visualData);
-    
-    if (response.success) {
-      setGeneratedContent({
-        type: 'image',
-        data: response.data
-      });
-    } else {
-      setGeneratedContent({
-        type: 'fallback',
-        data: response
-      });
-    }
-  } catch (error) {
-    console.error('Visual aid generation failed:', error);
-    alert('Failed to generate visual aid. Please try again.');
-  } finally {
-    setLoading(false);
-  }
-};
-
-const generateVideo = async () => {
-  if (!videoData.description) {
-    alert('Please enter a description');
-    return;
-  }
-
-  setLoading(true);
-  try {
-    const response = await api.post('/visuals/generate-video', videoData);
-    
-    if (response.success) {
-      setGeneratedContent({
-        type: 'video',
-        data: response.data
-      });
-    } else {
-      setGeneratedContent({
-        type: 'fallback',
-        data: response
-      });
-    }
-  } catch (error) {
-    console.error('Video generation failed:', error);
-    alert('Failed to generate video. Please try again.');
-  } finally {
-    setLoading(false);
-  }
-};
-
-  const renderServiceStatus = () => {
-    if (!serviceStatus) return null;
-
+  if (showVisualAid && visualAid) {
     return (
-      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <h3 className="font-medium text-blue-800 mb-2">Service Status</h3>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <div className={`w-3 h-3 rounded-full ${serviceStatus.imagen?.available ? 'bg-green-500' : 'bg-red-500'}`}></div>
-            <span>Image Generation: {serviceStatus.imagen?.available ? 'Available' : 'Unavailable'}</span>
+      <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+        <div className="p-6 bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="text-3xl">🎨</div>
+              <div>
+                <h3 className="text-xl font-bold">{visualAid.title}</h3>
+                <p className="text-purple-100 text-sm">AI-generated blackboard visual</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowVisualAid(false)}
+              className="px-4 py-2 border-2 border-white text-white hover:bg-white hover:text-purple-600 rounded-lg transition-all duration-300 font-medium"
+            >
+              <span className="mr-1">✕</span>
+              Close
+            </button>
           </div>
-          <div className="flex items-center gap-2">
-            <div className={`w-3 h-3 rounded-full ${serviceStatus.veo?.available ? 'bg-green-500' : 'bg-red-500'}`}></div>
-            <span>Video Generation: {serviceStatus.veo?.available ? 'Available' : 'Unavailable'}</span>
+        </div>
+        
+        <div className="p-8 space-y-8">
+          {/* Generated Image */}
+          <div className="text-center">
+            <div className="inline-block border-4 border-gray-800 rounded-xl bg-gray-900 p-6 shadow-2xl">
+              <img 
+                src={visualAid.image_data} 
+                alt={visualAid.title}
+                className="max-w-full h-auto rounded-lg bg-white"
+                style={{ maxHeight: '500px', maxWidth: '100%' }}
+                onError={(e) => {
+                  console.error('Image failed to load:', e);
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'block';
+                }}
+              />
+              <div style={{ display: 'none' }} className="p-8 bg-gray-100 rounded text-gray-600">
+                <p>Image failed to load. Please try generating again.</p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-600 mt-4 font-medium">
+              AI-generated blackboard-style diagram using Gemini
+            </p>
+          </div>
+
+          {/* Materials Needed */}
+          {visualAid.materials_needed && visualAid.materials_needed.length > 0 && (
+            <div className="p-6 bg-blue-50 rounded-xl border border-blue-200">
+              <h4 className="font-bold text-blue-900 mb-3 flex items-center text-lg">
+                <span className="mr-2">🎒</span>
+                Materials Needed
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {visualAid.materials_needed.map((material, index) => (
+                  <span 
+                    key={index}
+                    className="px-3 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"
+                  >
+                    {material}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Step-by-Step Instructions */}
+          {visualAid.step_by_step_instructions && visualAid.step_by_step_instructions.length > 0 && (
+            <div className="p-6 bg-green-50 rounded-xl border border-green-200">
+              <h4 className="font-bold text-green-900 mb-4 flex items-center text-lg">
+                <span className="mr-2">📋</span>
+                Drawing Steps
+              </h4>
+              <div className="space-y-3">
+                {visualAid.step_by_step_instructions.map((step, index) => (
+                  <div key={index} className="flex items-start space-x-4 p-4 bg-white rounded-lg border border-green-100 shadow-sm">
+                    <div className="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">
+                      {index + 1}
+                    </div>
+                    <p className="text-green-800 flex-1 leading-relaxed">{step}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Teaching Points */}
+          {visualAid.teaching_points && visualAid.teaching_points.length > 0 && (
+            <div className="p-6 bg-indigo-50 rounded-xl border border-indigo-200">
+              <h4 className="font-bold text-indigo-900 mb-3 flex items-center text-lg">
+                <span className="mr-2">💡</span>
+                Key Teaching Points
+              </h4>
+              <ul className="space-y-2">
+                {visualAid.teaching_points.map((point, index) => (
+                  <li key={index} className="text-indigo-800 flex items-start">
+                    <span className="mr-3 text-indigo-600 flex-shrink-0 font-bold">•</span>
+                    <span className="leading-relaxed">{point}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Student Interaction */}
+          {visualAid.student_interaction && (
+            <div className="p-6 bg-yellow-50 rounded-xl border border-yellow-200">
+              <h4 className="font-bold text-yellow-900 mb-3 flex items-center text-lg">
+                <span className="mr-2">👥</span>
+                Student Interaction Ideas
+              </h4>
+              <p className="text-yellow-800 leading-relaxed">{visualAid.student_interaction}</p>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button
+              onClick={downloadImage}
+              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg font-medium shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+            >
+              <span className="mr-2">📥</span>
+              Download Image
+            </button>
+            <button
+              onClick={() => setShowVisualAid(false)}
+              className="px-6 py-3 border-2 border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white rounded-lg font-medium transition-all duration-300 transform hover:scale-105"
+            >
+              <span className="mr-2">✏️</span>
+              Create Another
+            </button>
           </div>
         </div>
       </div>
     );
-  };
+  }
 
-  const renderFallbackContent = (fallbackData) => (
-    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-      <div className="flex items-start gap-3">
-        <AlertCircle className="text-yellow-600 mt-1" size={20} />
-        <div>
-          <h3 className="font-medium text-yellow-800 mb-2">Service Unavailable</h3>
-          <p className="text-sm text-yellow-700 mb-3">{fallbackData.message}</p>
-          {fallbackData.fallback && (
-            <div className="bg-white rounded p-3">
-              <h4 className="font-medium text-gray-800 mb-2">Alternative Suggestion:</h4>
-              <p className="text-sm text-gray-600">{fallbackData.fallback.suggestion}</p>
-              {fallbackData.fallback.text_description && (
-                <p className="text-sm text-gray-600 mt-2">
-                  <strong>Description:</strong> {fallbackData.fallback.text_description}
+  return (
+    <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-2xl border-2 border-purple-200 p-8 shadow-xl">
+      <div className="text-center mb-8">
+        <div className="text-8xl mb-6">🎨</div>
+        <h3 className="text-3xl font-bold text-gray-900 mb-4">
+          Generate Blackboard Visual Aid
+        </h3>
+        <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto leading-relaxed">
+          Create an AI-generated diagram for <strong>{topic}</strong> that you can easily 
+          replicate on your blackboard or whiteboard using Google's Gemini AI.
+        </p>
+        
+        <div className="grid md:grid-cols-3 gap-6 mb-8">
+          <div className="flex flex-col items-center space-y-2 text-purple-700 p-4 bg-white rounded-xl shadow-md">
+            <span className="text-3xl">✏️</span>
+            <span className="font-semibold">Simple line drawings</span>
+            <span className="text-sm text-gray-600 text-center">Easy to reproduce with chalk</span>
+          </div>
+          <div className="flex flex-col items-center space-y-2 text-purple-700 p-4 bg-white rounded-xl shadow-md">
+            <span className="text-3xl">📏</span>
+            <span className="font-semibold">Easy to replicate</span>
+            <span className="text-sm text-gray-600 text-center">Step-by-step instructions</span>
+          </div>
+          <div className="flex flex-col items-center space-y-2 text-purple-700 p-4 bg-white rounded-xl shadow-md">
+            <span className="text-3xl">🤖</span>
+            <span className="font-semibold">Gemini AI powered</span>
+            <span className="text-sm text-gray-600 text-center">Advanced AI generation</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Custom Prompt Input */}
+      <div className="mb-8">
+        <label className="block text-lg font-semibold text-gray-900 mb-3">
+          Describe what you want to draw:
+        </label>
+        <div className="relative">
+          <textarea
+            value={customPrompt}
+            onChange={(e) => setCustomPrompt(e.target.value)}
+            placeholder={`e.g., "Draw a simple diagram showing the water cycle with clouds, rain, rivers, and evaporation arrows"`}
+            className="w-full p-4 border-2 border-purple-300 rounded-xl focus:ring-4 focus:ring-purple-200 focus:border-purple-500 transition-all duration-300 resize-none bg-white shadow-md"
+            rows="4"
+          />
+          <div className="absolute bottom-3 right-3 text-sm text-gray-500">
+            {customPrompt.length}/500
+          </div>
+        </div>
+        <div className="mt-2 text-sm text-gray-600">
+          💡 Tip: Be specific about shapes, labels, and educational elements you want included.
+        </div>
+      </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border-2 border-red-200 rounded-xl">
+          <div className="flex items-start space-x-3 text-red-700">
+            <span className="text-2xl">⚠️</span>
+            <div>
+              <p className="font-semibold mb-2">Error generating visual aid:</p>
+              <p className="text-sm leading-relaxed">{error}</p>
+              {error.includes('API key') && (
+                <p className="text-xs mt-3 text-red-600 bg-red-100 p-2 rounded">
+                  Make sure to add your Gemini API key to your environment variables as NEXT_PUBLIC_GEMINI_API_KEY
                 </p>
               )}
             </div>
+          </div>
+        </div>
+      )}
+      
+      <div className="text-center">
+        <button
+          onClick={generateVisualAid}
+          disabled={isLoading || !customPrompt.trim()}
+          className={`px-8 py-4 text-lg font-semibold rounded-xl shadow-xl transition-all duration-300 transform ${
+            isLoading || !customPrompt.trim()
+              ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+              : 'bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white hover:scale-105 hover:shadow-2xl'
+          }`}
+        >
+          {isLoading ? (
+            <>
+              <div className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-3"></div>
+              Generating with Gemini AI...
+            </>
+          ) : (
+            <>
+              <span className="mr-3">🎨</span>
+              Generate Blackboard Diagram
+            </>
           )}
-        </div>
+        </button>
       </div>
-    </div>
-  );
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Image className="text-indigo-600" size={28} />
-        <h1 className="text-3xl font-bold text-gray-900">Visual Generator</h1>
-      </div>
-
-      {renderServiceStatus()}
-
-      {/* Tab Navigation */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-        <div className="flex border-b border-gray-200">
-          <button
-            onClick={() => setActiveTab('diagram')}
-            className={`px-6 py-3 font-medium text-sm rounded-t-xl transition-colors ${
-              activeTab === 'diagram'
-                ? 'bg-indigo-50 text-indigo-600 border-b-2 border-indigo-600'
-                : 'text-gray-600 hover:text-gray-800'
-            }`}
-          >
-            <Image size={16} className="inline mr-2" />
-            Educational Diagrams
-          </button>
-          <button
-            onClick={() => setActiveTab('visual')}
-            className={`px-6 py-3 font-medium text-sm rounded-t-xl transition-colors ${
-              activeTab === 'visual'
-                ? 'bg-indigo-50 text-indigo-600 border-b-2 border-indigo-600'
-                : 'text-gray-600 hover:text-gray-800'
-            }`}
-          >
-            <Image size={16} className="inline mr-2" />
-            Visual Aids
-          </button>
-          <button
-            onClick={() => setActiveTab('video')}
-            className={`px-6 py-3 font-medium text-sm rounded-t-xl transition-colors ${
-              activeTab === 'video'
-                ? 'bg-indigo-50 text-indigo-600 border-b-2 border-indigo-600'
-                : 'text-gray-600 hover:text-gray-800'
-            }`}
-          >
-            <Video size={16} className="inline mr-2" />
-            Educational Videos
-          </button>
-        </div>
-
-        <div className="p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Input Section */}
-            <div className="space-y-4">
-              {activeTab === 'diagram' && (
-                <>
-                  <h2 className="text-xl font-semibold">Generate Educational Diagram</h2>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Concept</label>
-                    <input
-                      type="text"
-                      value={diagramData.concept}
-                      onChange={(e) => setDiagramData(prev => ({ ...prev, concept: e.target.value }))}
-                      placeholder="e.g., Water Cycle, Human Heart, Plant Cell"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Grade Level</label>
-                    <select
-                      value={diagramData.grade_level}
-                      onChange={(e) => setDiagramData(prev => ({ ...prev, grade_level: parseInt(e.target.value) }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                    >
-                      {[1,2,3,4,5,6,7,8,9,10,11,12].map(grade => (
-                        <option key={grade} value={grade}>Grade {grade}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <button
-                    onClick={generateDiagram}
-                    disabled={loading || !diagramData.concept}
-                    className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white py-2 px-4 rounded-lg font-medium hover:shadow-lg transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {loading ? (
-                      <>
-                        <div className="loading"></div>
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Wand2 size={20} />
-                        Generate Diagram
-                      </>
-                    )}
-                  </button>
-                </>
-              )}
-
-              {activeTab === 'visual' && (
-                <>
-                  <h2 className="text-xl font-semibold">Generate Visual Aid</h2>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                    <textarea
-                      value={visualData.description}
-                      onChange={(e) => setVisualData(prev => ({ ...prev, description: e.target.value }))}
-                      placeholder="Describe what you want to visualize..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 min-h-24"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Style</label>
-                    <select
-                      value={visualData.style}
-                      onChange={(e) => setVisualData(prev => ({ ...prev, style: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                    >
-                      {visualStyles.map(style => (
-                        <option key={style} value={style}>{style}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <button
-                    onClick={generateVisualAid}
-                    disabled={loading || !visualData.description}
-                    className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white py-2 px-4 rounded-lg font-medium hover:shadow-lg transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {loading ? (
-                      <>
-                        <div className="loading"></div>
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Wand2 size={20} />
-                        Generate Visual
-                      </>
-                    )}
-                  </button>
-                </>
-              )}
-
-              {activeTab === 'video' && (
-                <>
-                  <h2 className="text-xl font-semibold">Generate Educational Video</h2>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                    <textarea
-                      value={videoData.description}
-                      onChange={(e) => setVideoData(prev => ({ ...prev, description: e.target.value }))}
-                      placeholder="Describe the educational video you want to create..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 min-h-24"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Duration (seconds)</label>
-                    <select
-                      value={videoData.duration}
-                      onChange={(e) => setVideoData(prev => ({ ...prev, duration: parseInt(e.target.value) }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                    >
-                      <option value={15}>15 seconds</option>
-                      <option value={30}>30 seconds</option>
-                      <option value={60}>1 minute</option>
-                      <option value={120}>2 minutes</option>
-                    </select>
-                  </div>
-                  <button
-                    onClick={generateVideo}
-                    disabled={loading || !videoData.description}
-                    className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white py-2 px-4 rounded-lg font-medium hover:shadow-lg transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {loading ? (
-                      <>
-                        <div className="loading"></div>
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Wand2 size={20} />
-                        Generate Video
-                      </>
-                    )}
-                  </button>
-                </>
-              )}
-            </div>
-
-            {/* Preview Section */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold">Generated Content</h2>
-                {generatedContent && generatedContent.type !== 'fallback' && (
-                  <button className="flex items-center gap-2 px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
-                    <Download size={16} />
-                    Download
-                  </button>
-                )}
-              </div>
-
-              {generatedContent ? (
-                <div className="border rounded-lg p-4">
-                  {generatedContent.type === 'image' && (
-                    <div className="space-y-3">
-                      <img
-                        src={`data:image/png;base64,${generatedContent.data.image}`}
-                        alt="Generated visual"
-                        className="w-full rounded-lg border"
-                      />
-                      <div className="text-sm text-gray-600">
-                        <p><strong>Description:</strong> {generatedContent.data.description || generatedContent.data.concept}</p>
-                        <p><strong>Format:</strong> {generatedContent.data.format}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {generatedContent.type === 'video' && (
-                    <div className="space-y-3">
-                      <video
-                        controls
-                        className="w-full rounded-lg border"
-                        src={`data:video/mp4;base64,${generatedContent.data.video}`}
-                      />
-                      <div className="text-sm text-gray-600">
-                        <p><strong>Description:</strong> {generatedContent.data.description}</p>
-                        <p><strong>Duration:</strong> {generatedContent.data.duration} seconds</p>
-                        <p><strong>Format:</strong> {generatedContent.data.format}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {generatedContent.type === 'fallback' && renderFallbackContent(generatedContent.data)}
-                </div>
-              ) : (
-                <div className="text-center text-gray-500 py-12 border rounded-lg">
-                  <Image size={48} className="mx-auto mb-4 text-gray-300" />
-                  <p>Your generated visual will appear here</p>
-                  <p className="text-sm">Fill out the form and click generate</p>
-                </div>
-              )}
+        
+      {isLoading && (
+        <div className="mt-6 p-6 bg-blue-50 border-2 border-blue-200 rounded-xl">
+          <div className="flex items-start space-x-3">
+            <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin flex-shrink-0 mt-1"></div>
+            <div>
+              <p className="text-blue-700 font-semibold text-lg mb-2">
+                Gemini AI is creating your visual aid...
+              </p>
+              <p className="text-blue-600">
+                This will be a simple diagram you can easily draw on your blackboard to help explain <strong>{topic}</strong>.
+              </p>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Tips Section */}
-      <div className="bg-indigo-50 rounded-xl p-6 border border-indigo-200">
-        <h3 className="font-semibold text-indigo-800 mb-3">Visual Generation Tips</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-indigo-700">
-          <div>
-            <h4 className="font-medium mb-2">For Diagrams:</h4>
-            <ul className="space-y-1">
-              <li>• Use specific scientific terms</li>
-              <li>• Mention key components to include</li>
-              <li>• Specify the grade level appropriately</li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-medium mb-2">For Visual Aids:</h4>
-            <ul className="space-y-1">
-              <li>• Be descriptive about what you want</li>
-              <li>• Choose appropriate style for age group</li>
-              <li>• Consider classroom display needs</li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-medium mb-2">For Videos:</h4>
-            <ul className="space-y-1">
-              <li>• Describe the concept clearly</li>
-              <li>• Keep duration appropriate for attention span</li>
-              <li>• Include key learning objectives</li>
-            </ul>
-          </div>
+      {/* Sample Prompts */}
+      <div className="mt-8 p-6 bg-green-50 border-2 border-green-200 rounded-xl">
+        <h4 className="font-semibold text-green-900 mb-3 flex items-center">
+          <span className="mr-2">💡</span>
+          Example Prompts:
+        </h4>
+        <div className="grid gap-3">
+          {[
+            "Draw a simple diagram showing the parts of a plant with roots, stem, leaves, and flower",
+            "Create a basic diagram of the solar system with sun and planets",
+            "Draw a simple food chain showing grass → rabbit → fox with arrows",
+            "Show the water cycle with clouds, rain, river, and evaporation arrows"
+          ].map((example, index) => (
+            <button
+              key={index}
+              onClick={() => setCustomPrompt(example)}
+              className="text-left p-3 bg-white border border-green-200 rounded-lg hover:bg-green-100 transition-colors text-sm text-green-800"
+            >
+              "{example}"
+            </button>
+          ))}
         </div>
       </div>
     </div>
