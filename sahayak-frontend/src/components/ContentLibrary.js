@@ -15,32 +15,24 @@ export default function ContentLibrary({ teacherId }) {
   const contentTypes = ['all', 'story', 'worksheet', 'lesson_plan', 'assessment', 'game'];
   const languages = ['all', 'hi', 'en', 'mr', 'bn', 'te', 'ta', 'gu'];
 
-  useEffect(() => {
-    fetchContent();
+const fetchContent = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await api.getContentLibrary(teacherId, {
+        limit: 100
+      });
+      
+      if (response.success) {
+        setContent(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch content:', error);
+    } finally {
+      setLoading(false);
+    }
   }, [teacherId]);
 
-  useEffect(() => {
-    filterContent();
-  }, [content, searchTerm, selectedType, selectedLanguage]);
-
-const fetchContent = async () => {
-  try {
-    setLoading(true);
-    const response = await api.getContentLibrary(teacherId, {
-      limit: 100
-    });
-    
-    if (response.success) {
-      setContent(response.data);
-    }
-  } catch (error) {
-    console.error('Failed to fetch content:', error);
-  } finally {
-    setLoading(false);
-  }
-};
-
-  const filterContent = () => {
+  const filterContent = useCallback(() => {
     let filtered = [...content];
 
     // Search filter
@@ -62,7 +54,16 @@ const fetchContent = async () => {
     }
 
     setFilteredContent(filtered);
-  };
+  }, [content, searchTerm, selectedType, selectedLanguage]);
+
+  useEffect(() => {
+    fetchContent();
+  }, [fetchContent]);
+
+  useEffect(() => {
+    filterContent();
+  }, [filterContent]);
+
 
   const toggleFavorite = async (contentId) => {
     try {

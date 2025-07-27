@@ -16,6 +16,8 @@ from app.routes.speech import speech_bp
 from app.routes.analytics import analytics_bp
 from app.routes.agents import agents_bp
 from app.routes.planning import planning_bp
+from app.routes.quiz_builder import quiz_builder_bp
+
 
 class ServiceManager:
     def __init__(self, config):
@@ -104,6 +106,7 @@ def create_app():
         app.register_blueprint(analytics_bp, url_prefix='/api/analytics')
         app.register_blueprint(planning_bp, url_prefix='/api/planning')
         app.register_blueprint(agents_bp, url_prefix='/api/agents')
+        app.register_blueprint(quiz_builder_bp, url_prefix='/api/quiz-builder')
         
         print("✅ All routes registered")
         

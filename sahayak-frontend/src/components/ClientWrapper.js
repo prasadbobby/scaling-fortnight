@@ -15,6 +15,8 @@ import ContentLibrary from '@/components/ContentLibrary';
 import KnowledgeBase from '@/components/KnowledgeBase';
 import GoogleADKWorkflow from '@/components/GoogleADKWorkflow'; // Updated import
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import QuizBuilder from '@/components/QuizBuilder';
 import { 
   BookOpen, PenTool, Layers, Mic, Image, BarChart3, 
   FolderOpen, Brain, Home as HomeIcon, Sparkles, Workflow 
@@ -32,6 +34,7 @@ export default function ClientWrapper() {
     { id: 'content', label: 'Content Generator', icon: PenTool, color: 'green' },
     { id: 'lessons', label: 'Lesson Planner', icon: BookOpen, color: 'orange' },
     { id: 'materials', label: 'Material Differentiator', icon: Layers, color: 'red' },
+    { id: 'quizbuilder', label: 'Quiz Builder', icon: Brain, color: 'purple' },
     { id: 'speech', label: 'Speech Assessment', icon: Mic, color: 'indigo' },
     { id: 'visuals', label: 'Visual Generator', icon: Image, color: 'cyan' },
     { id: 'knowledge', label: 'Knowledge Base', icon: Brain, color: 'pink' },
@@ -60,6 +63,7 @@ export default function ClientWrapper() {
       agentic: GoogleADKWorkflow, // Updated component reference
       content: ContentGenerator,
       lessons: LessonPlanner,
+      quizbuilder: QuizBuilder,
       materials: MaterialDifferentiator,
       speech: SpeechAssessment,
       visuals: VisualGenerator,
@@ -77,6 +81,7 @@ export default function ClientWrapper() {
   }
 
   return (
+    <ProtectedRoute>
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50">
       <Navbar 
         onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
@@ -129,5 +134,6 @@ export default function ClientWrapper() {
         </motion.button>
       </motion.div>
     </div>
+    </ProtectedRoute>
   );
 }

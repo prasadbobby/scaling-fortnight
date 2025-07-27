@@ -293,7 +293,7 @@ export default function LessonPlanner({ teacherId }) {
                   <Calendar size={64} className="mx-auto mb-6 text-gray-300" />
                   <h3 className="text-lg font-semibold mb-2">Ready to Plan!</h3>
                   <p className="text-sm mb-4">Your AI-generated lesson plan will appear here</p>
-                  <p className="text-xs text-gray-400">Configure your settings and click "Generate Lesson Plan"</p>
+                  <p className="text-xs text-gray-400">Configure your settings and click &ldquo;Generate Lesson Plan&rdquo;</p>
                 </div>
               )}
             </div>

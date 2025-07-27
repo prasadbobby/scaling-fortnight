@@ -10,26 +10,26 @@ export default function Analytics({ teacherId }) {
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState(30);
 
-  useEffect(() => {
-    fetchAnalytics();
+  const fetchAnalytics = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await api.getTeacherAnalytics(teacherId, {
+        days: timeRange
+      });
+      
+      if (response.success) {
+        setDashboardData(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch analytics:', error);
+    } finally {
+      setLoading(false);
+    }
   }, [teacherId, timeRange]);
 
-const fetchAnalytics = async () => {
-  try {
-    setLoading(true);
-    const response = await api.getTeacherAnalytics(teacherId, {
-      days: timeRange
-    });
-    
-    if (response.success) {
-      setDashboardData(response.data);
-    }
-  } catch (error) {
-    console.error('Failed to fetch analytics:', error);
-  } finally {
-    setLoading(false);
-  }
-};
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
 
   if (loading) {
     return (

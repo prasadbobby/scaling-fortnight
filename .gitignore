@@ -15,3 +15,9 @@ coverage/
 .vscode/
 .idea/
 .env.local
+form.py
+google_forms_credentials.json
+fire.json
+drive.json
+populate_firebase.py
+test_simple_workflow.py

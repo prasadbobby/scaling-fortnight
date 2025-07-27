@@ -1,6 +1,7 @@
 // frontend/components/ui/VisualGenerator.js
 'use client';
 import { useState } from 'react';
+import Image from 'next/image';
 
 export default function VisualGenerator({ resourceId, topic, description }) {
   const [isLoading, setIsLoading] = useState(false);
@@ -205,7 +206,7 @@ Please create a simple educational diagram that a teacher can easily recreate on
           {/* Generated Image */}
           <div className="text-center">
             <div className="inline-block border-4 border-gray-800 rounded-xl bg-gray-900 p-6 shadow-2xl">
-              <img 
+              <Image 
                 src={visualAid.image_data} 
                 alt={visualAid.title}
                 className="max-w-full h-auto rounded-lg bg-white"
@@ -325,14 +326,14 @@ Please create a simple educational diagram that a teacher can easily recreate on
         </h3>
         <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto leading-relaxed">
           Create an AI-generated diagram for <strong>{topic}</strong> that you can easily 
-          replicate on your blackboard or whiteboard using Google's Gemini AI.
+          replicate on your blackboard or whiteboard using Googles Gemini AI.
         </p>
         
         <div className="grid md:grid-cols-3 gap-6 mb-8">
           <div className="flex flex-col items-center space-y-2 text-purple-700 p-4 bg-white rounded-xl shadow-md">
             <span className="text-3xl">✏️</span>
             <span className="font-semibold">Simple line drawings</span>
-            <span className="text-sm text-gray-600 text-center">Easy to reproduce with chalk</span>
+            <span className='text-sm text-gray-600 text-center'>Easy to reproduce with chalk</span>
           </div>
           <div className="flex flex-col items-center space-y-2 text-purple-700 p-4 bg-white rounded-xl shadow-md">
             <span className="text-3xl">📏</span>
@@ -445,7 +446,7 @@ Please create a simple educational diagram that a teacher can easily recreate on
               onClick={() => setCustomPrompt(example)}
               className="text-left p-3 bg-white border border-green-200 rounded-lg hover:bg-green-100 transition-colors text-sm text-green-800"
             >
-              "{example}"
+              &quot;{example}&quot;
             </button>
           ))}
         </div>

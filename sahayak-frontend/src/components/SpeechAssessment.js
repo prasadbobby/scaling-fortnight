@@ -42,6 +42,72 @@ export default function SpeechAssessment({ teacherId }) {
   };
 
   useEffect(() => {
+    const initializeSpeechRecognition = () => {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = language;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        console.log('Speech recognition started');
+        setIsRecording(true);
+      };
+
+      recognition.onresult = (event) => {
+        let finalTranscript = '';
+        let interimTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+
+        if (finalTranscript) {
+          setRecognizedText(prev => prev + finalTranscript);
+        }
+        setInterimText(interimTranscript);
+      };
+
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setIsRecording(false);
+        
+        let errorMessage = 'Speech recognition error: ';
+        switch (event.error) {
+          case 'no-speech':
+            errorMessage += 'No speech detected. Please try speaking clearly.';
+            break;
+          case 'audio-capture':
+            errorMessage += 'Microphone not accessible. Please check permissions.';
+            break;
+          case 'not-allowed':
+            errorMessage += 'Microphone permission denied. Please allow microphone access.';
+            break;
+          case 'network':
+            errorMessage += 'Network error. Please check your internet connection.';
+            break;
+          default:
+            errorMessage += event.error;
+        }
+        alert(errorMessage);
+      };
+
+      recognition.onend = () => {
+        console.log('Speech recognition ended');
+        setIsRecording(false);
+        setInterimText('');
+      };
+
+      recognitionRef.current = recognition;
+    };
+
     // Check if speech recognition is supported
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       setSpeechSupported(true);
@@ -55,73 +121,73 @@ export default function SpeechAssessment({ teacherId }) {
         recognitionRef.current.stop();
       }
     };
-  }, [language]);
+  }, [language]); // Only language dependency needed
 
-  const initializeSpeechRecognition = () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
+  // const initializeSpeechRecognition = () => {
+  //   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  //   const recognition = new SpeechRecognition();
     
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = language;
-    recognition.maxAlternatives = 1;
+  //   recognition.continuous = true;
+  //   recognition.interimResults = true;
+  //   recognition.lang = language;
+  //   recognition.maxAlternatives = 1;
 
-    recognition.onstart = () => {
-      console.log('Speech recognition started');
-      setIsRecording(true);
-    };
+  //   recognition.onstart = () => {
+  //     console.log('Speech recognition started');
+  //     setIsRecording(true);
+  //   };
 
-    recognition.onresult = (event) => {
-      let finalTranscript = '';
-      let interimTranscript = '';
+  //   recognition.onresult = (event) => {
+  //     let finalTranscript = '';
+  //     let interimTranscript = '';
 
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalTranscript += transcript;
-        } else {
-          interimTranscript += transcript;
-        }
-      }
+  //     for (let i = event.resultIndex; i < event.results.length; i++) {
+  //       const transcript = event.results[i][0].transcript;
+  //       if (event.results[i].isFinal) {
+  //         finalTranscript += transcript;
+  //       } else {
+  //         interimTranscript += transcript;
+  //       }
+  //     }
 
-      if (finalTranscript) {
-        setRecognizedText(prev => prev + finalTranscript);
-      }
-      setInterimText(interimTranscript);
-    };
+  //     if (finalTranscript) {
+  //       setRecognizedText(prev => prev + finalTranscript);
+  //     }
+  //     setInterimText(interimTranscript);
+  //   };
 
-    recognition.onerror = (event) => {
-      console.error('Speech recognition error:', event.error);
-      setIsRecording(false);
+  //   recognition.onerror = (event) => {
+  //     console.error('Speech recognition error:', event.error);
+  //     setIsRecording(false);
       
-      let errorMessage = 'Speech recognition error: ';
-      switch (event.error) {
-        case 'no-speech':
-          errorMessage += 'No speech detected. Please try speaking clearly.';
-          break;
-        case 'audio-capture':
-          errorMessage += 'Microphone not accessible. Please check permissions.';
-          break;
-        case 'not-allowed':
-          errorMessage += 'Microphone permission denied. Please allow microphone access.';
-          break;
-        case 'network':
-          errorMessage += 'Network error. Please check your internet connection.';
-          break;
-        default:
-          errorMessage += event.error;
-      }
-      alert(errorMessage);
-    };
+  //     let errorMessage = 'Speech recognition error: ';
+  //     switch (event.error) {
+  //       case 'no-speech':
+  //         errorMessage += 'No speech detected. Please try speaking clearly.';
+  //         break;
+  //       case 'audio-capture':
+  //         errorMessage += 'Microphone not accessible. Please check permissions.';
+  //         break;
+  //       case 'not-allowed':
+  //         errorMessage += 'Microphone permission denied. Please allow microphone access.';
+  //         break;
+  //       case 'network':
+  //         errorMessage += 'Network error. Please check your internet connection.';
+  //         break;
+  //       default:
+  //         errorMessage += event.error;
+  //     }
+  //     alert(errorMessage);
+  //   };
 
-    recognition.onend = () => {
-      console.log('Speech recognition ended');
-      setIsRecording(false);
-      setInterimText('');
-    };
+  //   recognition.onend = () => {
+  //     console.log('Speech recognition ended');
+  //     setIsRecording(false);
+  //     setInterimText('');
+  //   };
 
-    recognitionRef.current = recognition;
-  };
+  //   recognitionRef.current = recognition;
+  // };
 
   const startRecording = () => {
     if (!speechSupported) {
@@ -496,7 +562,7 @@ Respond in JSON format:
             <div className="text-center text-gray-500 py-12">
               <Mic size={48} className="mx-auto mb-4 text-gray-300" />
               <p>AI assessment results will appear here</p>
-              <p className="text-sm">Record speech and click "Assess Reading"</p>
+             <p className="text-sm">Record speech and click &ldquo;Assess Reading&rdquo;</p>
             </div>
           )}
         </div>

@@ -1,12 +1,13 @@
-// src/components/Dashboard.js - Update the main container
+// src/components/Dashboard.js
 'use client';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   BookOpen, Users, TrendingUp, Clock, Award, Target, 
   Plus, ArrowRight, Sparkles, Calendar, Brain, PenTool,
-  ChevronRight, Star, Zap, Layers, Mic, Image,
+  ChevronRight, Star, Zap, Layers, Mic, Image, Phone // Phone import
 } from 'lucide-react';
+import CallButton from '@/components/ui/CallButton'; // Add this import
 
 export default function Dashboard({ teacherId }) {
   const [stats, setStats] = useState({
@@ -96,23 +97,26 @@ export default function Dashboard({ teacherId }) {
       icon: BookOpen,
       gradient: 'from-blue-400 to-purple-500',
       action: 'content',
-      popular: true
+      popular: true,
+      isCallAction: false
+    },
+    {
+      title: 'AI Voice Call',
+      description: 'Get instant AI assistance via phone call',
+      icon: Phone,
+      gradient: 'from-green-400 to-emerald-500',
+      action: 'call',
+      popular: true,
+      isCallAction: true
     },
     {
       title: 'Plan Lessons',
       description: 'AI-powered weekly lesson planning',
       icon: Calendar,
-      gradient: 'from-green-400 to-teal-500',
+      gradient: 'from-orange-400 to-red-500',
       action: 'lessons',
-      popular: false
-    },
-    {
-      title: 'Assess Reading',
-      description: 'Voice-based reading assessments',
-      icon: Award,
-      gradient: 'from-pink-400 to-red-500',
-      action: 'speech',
-      popular: true
+      popular: false,
+      isCallAction: false
     },
     {
       title: 'Ask AI',
@@ -120,7 +124,8 @@ export default function Dashboard({ teacherId }) {
       icon: Brain,
       gradient: 'from-cyan-400 to-blue-500',
       action: 'knowledge',
-      popular: false
+      popular: false,
+      isCallAction: false
     }
   ];
 
@@ -205,7 +210,6 @@ export default function Dashboard({ teacherId }) {
         })}
       </div>
 
-      {/* Rest of the component remains the same but with responsive classes... */}
       {/* Quick Actions */}
       <motion.div 
         className="bg-white rounded-2xl p-6 lg:p-8 shadow-lg border border-gray-100"
@@ -234,14 +238,13 @@ export default function Dashboard({ teacherId }) {
           {quickActions.map((action, index) => {
             const Icon = action.icon;
             return (
-              <motion.button 
+              <motion.div 
                 key={index}
                 className="group relative p-4 lg:p-6 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border-2 border-transparent hover:border-gray-200 transition-all duration-300 text-left hover:shadow-lg overflow-hidden"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.9 + index * 0.1 }}
                 whileHover={{ scale: 1.02, y: -3 }}
-                whileTap={{ scale: 0.98 }}
               >
                 {action.popular && (
                   <div className="absolute top-3 right-3">
@@ -259,11 +262,23 @@ export default function Dashboard({ teacherId }) {
                   {action.title}
                 </h3>
                 <p className="text-gray-600 text-sm mb-4 leading-relaxed">{action.description}</p>
-                <div className="flex items-center text-blue-600 font-semibold text-sm group-hover:text-blue-700">
-                  Get Started 
-                  <ChevronRight size={16} className="ml-1 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </motion.button>
+                
+                {/* Conditional rendering based on action type */}
+                {action.isCallAction ? (
+                  <div className="mt-4">
+                    <CallButton 
+                      phoneNumber="+917019316634"
+                      className="w-full text-sm justify-center"
+                      variant="primary"
+                    />
+                  </div>
+                ) : (
+                  <button className="flex items-center text-blue-600 font-semibold text-sm group-hover:text-blue-700 transition-colors">
+                    Get Started 
+                    <ChevronRight size={16} className="ml-1 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                )}
+              </motion.div>
             );
           })}
         </div>

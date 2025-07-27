@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { PenTool, Wand2, Download, Eye, Sparkles, FileText, Gamepad2 } from 'lucide-react';
 import api from '@/lib/api';
+import Image from 'next/image';
 
 export default function ContentGenerator({ teacherId }) {
   const [activeTab, setActiveTab] = useState('story');
@@ -314,7 +315,7 @@ export default function ContentGenerator({ teacherId }) {
                   {generatedContent.visual && (
                     <div className="glass-card p-6">
                       <h3 className="font-semibold mb-4 text-gray-800">Generated Visual Aid</h3>
-                      <img 
+                      <Image
                         src={`data:image/png;base64,${generatedContent.visual}`}
                         alt="Generated visual aid"
                         className="w-full h-auto rounded-xl shadow-md"
@@ -351,7 +352,7 @@ export default function ContentGenerator({ teacherId }) {
                   <PenTool size={64} className="mx-auto mb-6 text-gray-300" />
                   <h3 className="text-lg font-semibold mb-2">Ready to Create!</h3>
                   <p className="text-sm mb-4">Your AI-generated content will appear here</p>
-                  <p className="text-xs text-gray-400">Fill out the form and click "Generate" to get started</p>
+                   <p className="text-xs text-gray-400">Fill out the form and click &ldquo;Generate&rdquo; to get started</p>
                 </div>
               )}
             </motion.div>
