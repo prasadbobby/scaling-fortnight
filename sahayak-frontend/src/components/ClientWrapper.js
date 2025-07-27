@@ -17,6 +17,8 @@ import GoogleADKWorkflow from '@/components/GoogleADKWorkflow'; // Updated impor
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import QuizBuilder from '@/components/QuizBuilder';
+import ChatBubble from '@/components/ui/ChatBubble';
+import EnhancedChatBubble from '@/components/ui/EnhancedChatBubble';
 import { 
   BookOpen, PenTool, Layers, Mic, Image, BarChart3, 
   FolderOpen, Brain, Home as HomeIcon, Sparkles, Workflow 
@@ -118,7 +120,7 @@ export default function ClientWrapper() {
       </div>
 
       {/* Floating Help Button */}
-      <motion.div
+      {/* <motion.div
         className="fixed bottom-8 right-8 z-50"
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
@@ -132,7 +134,10 @@ export default function ClientWrapper() {
         >
           <Sparkles size={24} />
         </motion.button>
-      </motion.div>
+      </motion.div> */}
+
+      <ChatBubble />
+      <EnhancedChatBubble />
     </div>
     </ProtectedRoute>
   );

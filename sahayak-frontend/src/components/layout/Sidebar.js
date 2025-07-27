@@ -41,26 +41,8 @@ export default function Sidebar({ navigationItems, activeTab, onTabChange, isOpe
         `}
         initial={false}
       >
-        {/* Header */}
-        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
-          <motion.div 
-            className="flex items-center gap-3"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-          >
-            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md">
-              <span className="text-white font-bold text-xl">S</span>
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-800">Sahayak AI</h2>
-              <p className="text-sm text-gray-500">Teaching Assistant</p>
-            </div>
-          </motion.div>
-        </div>
-
         {/* Navigation */}
-        <nav className="p-4 space-y-2 overflow-y-auto h-[calc(100vh-200px)] custom-scrollbar">
+        <nav className="p-4 space-y-2 overflow-y-auto h-[calc(100vh-120px)] custom-scrollbar pt-6">
           {navigationItems.map((item, index) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -83,7 +65,7 @@ export default function Sidebar({ navigationItems, activeTab, onTabChange, isOpe
                 `}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 + 0.3 }}
+                transition={{ delay: index * 0.05 + 0.1 }}
                 whileHover={{ x: isActive ? 0 : 5 }}
                 whileTap={{ scale: 0.98 }}
               >
@@ -112,7 +94,7 @@ export default function Sidebar({ navigationItems, activeTab, onTabChange, isOpe
             className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 border border-blue-100"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
+            transition={{ delay: 0.3 }}
           >
             <h3 className="font-semibold text-gray-800 text-sm mb-1">Need Help?</h3>
             <p className="text-xs text-gray-600 mb-3">Get AI-powered assistance</p>

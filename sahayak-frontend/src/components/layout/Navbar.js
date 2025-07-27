@@ -1,3 +1,4 @@
+// src/components/layout/Navbar.js
 'use client';
 import { useState } from 'react';
 import { Menu, X, BookOpen, Bell, User, Search, Settings, Sparkles, LogOut, ChevronDown } from 'lucide-react';
@@ -41,20 +42,21 @@ export default function Navbar({ onMenuToggle, sidebarOpen }) {
             </motion.div>
           </button>
           
-          {/* Logo - Only show on mobile when sidebar is hidden */}
+          {/* Logo - Always visible */}
           <motion.div 
-            className="lg:hidden flex items-center gap-3"
+            className="flex items-center gap-3"
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-              <BookOpen className="text-white" size={24} />
+            <div className="w-10 h-10 lg:w-12 lg:h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+              <BookOpen className="text-white" size={window.innerWidth >= 1024 ? 28 : 24} />
             </div>
             <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <h1 className="text-xl lg:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 Sahayak AI
               </h1>
+              <p className="text-xs lg:text-sm text-gray-500 hidden sm:block">Teaching Assistant</p>
             </div>
           </motion.div>
         </div>

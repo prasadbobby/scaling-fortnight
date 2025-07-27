@@ -5,9 +5,10 @@ import { motion } from 'framer-motion';
 import { 
   BookOpen, Users, TrendingUp, Clock, Award, Target, 
   Plus, ArrowRight, Sparkles, Calendar, Brain, PenTool,
-  ChevronRight, Star, Zap, Layers, Mic, Image, Phone // Phone import
+  ChevronRight, Star, Zap, Layers, Mic, Image, 
+  FileText, // New import for Quiz Builder
+  Upload    // New import for Material Upload
 } from 'lucide-react';
-import CallButton from '@/components/ui/CallButton'; // Add this import
 
 export default function Dashboard({ teacherId }) {
   const [stats, setStats] = useState({
@@ -90,6 +91,7 @@ export default function Dashboard({ teacherId }) {
     }
   ];
 
+  // Updated quick actions without call functionality
   const quickActions = [
     {
       title: 'Create Story',
@@ -97,17 +99,15 @@ export default function Dashboard({ teacherId }) {
       icon: BookOpen,
       gradient: 'from-blue-400 to-purple-500',
       action: 'content',
-      popular: true,
-      isCallAction: false
+      popular: true
     },
     {
-      title: 'AI Voice Call',
-      description: 'Get instant AI assistance via phone call',
-      icon: Phone,
-      gradient: 'from-green-400 to-emerald-500',
-      action: 'call',
-      popular: true,
-      isCallAction: true
+      title: 'Build Quiz',
+      description: 'Create interactive quizzes and assessments',
+      icon: FileText,
+      gradient: 'from-purple-400 to-pink-500',
+      action: 'quizbuilder',
+      popular: true
     },
     {
       title: 'Plan Lessons',
@@ -115,17 +115,87 @@ export default function Dashboard({ teacherId }) {
       icon: Calendar,
       gradient: 'from-orange-400 to-red-500',
       action: 'lessons',
-      popular: false,
-      isCallAction: false
+      popular: false
+    },
+    {
+      title: 'Upload Materials',
+      description: 'Differentiate textbook content for multiple grades',
+      icon: Upload,
+      gradient: 'from-emerald-400 to-teal-500',
+      action: 'materials',
+      popular: false
+    }
+  ];
+
+  // Alternative option 1 - Replace with Ask AI
+  const quickActionsAlt1 = [
+    {
+      title: 'Create Story',
+      description: 'Generate culturally relevant educational stories',
+      icon: BookOpen,
+      gradient: 'from-blue-400 to-purple-500',
+      action: 'content',
+      popular: true
     },
     {
       title: 'Ask AI',
-      description: 'Get instant concept explanations',
+      description: 'Get instant concept explanations and help',
       icon: Brain,
       gradient: 'from-cyan-400 to-blue-500',
       action: 'knowledge',
-      popular: false,
-      isCallAction: false
+      popular: true
+    },
+    {
+      title: 'Plan Lessons',
+      description: 'AI-powered weekly lesson planning',
+      icon: Calendar,
+      gradient: 'from-orange-400 to-red-500',
+      action: 'lessons',
+      popular: false
+    },
+    {
+      title: 'Generate Visuals',
+      description: 'Create diagrams and visual aids',
+      icon: Image,
+      gradient: 'from-pink-400 to-rose-500',
+      action: 'visuals',
+      popular: false
+    }
+  ];
+
+  // Alternative option 2 - Replace with Speech Assessment
+  const quickActionsAlt2 = [
+    {
+      title: 'Create Story',
+      description: 'Generate culturally relevant educational stories',
+      icon: BookOpen,
+      gradient: 'from-blue-400 to-purple-500',
+      action: 'content',
+      popular: true
+    },
+    {
+      title: 'Speech Assessment',
+      description: 'Evaluate student reading and pronunciation',
+      icon: Mic,
+      gradient: 'from-indigo-400 to-purple-500',
+      action: 'speech',
+      popular: true
+    },
+    {
+      title: 'Plan Lessons',
+      description: 'AI-powered weekly lesson planning',
+      icon: Calendar,
+      gradient: 'from-orange-400 to-red-500',
+      action: 'lessons',
+      popular: false
+    },
+    {
+      title: 'Differentiate Materials',
+      description: 'Adapt content for different learning levels',
+      icon: Layers,
+      gradient: 'from-green-400 to-emerald-500',
+      action: 'materials',
+      popular: false
     }
   ];
 
@@ -147,6 +217,13 @@ export default function Dashboard({ teacherId }) {
       worksheet: 'from-orange-500 to-orange-600'
     };
     return colors[type] || 'from-gray-500 to-gray-600';
+  };
+
+  // Function to handle quick action clicks
+  const handleQuickAction = (action) => {
+    console.log(`Navigating to ${action}`);
+    // You can add navigation logic here or pass it up to parent component
+    // For now, it just logs the action
   };
 
   return (
@@ -240,11 +317,12 @@ export default function Dashboard({ teacherId }) {
             return (
               <motion.div 
                 key={index}
-                className="group relative p-4 lg:p-6 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border-2 border-transparent hover:border-gray-200 transition-all duration-300 text-left hover:shadow-lg overflow-hidden"
+                className="group relative p-4 lg:p-6 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border-2 border-transparent hover:border-gray-200 transition-all duration-300 text-left hover:shadow-lg overflow-hidden cursor-pointer"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.9 + index * 0.1 }}
                 whileHover={{ scale: 1.02, y: -3 }}
+                onClick={() => handleQuickAction(action.action)}
               >
                 {action.popular && (
                   <div className="absolute top-3 right-3">
@@ -263,21 +341,10 @@ export default function Dashboard({ teacherId }) {
                 </h3>
                 <p className="text-gray-600 text-sm mb-4 leading-relaxed">{action.description}</p>
                 
-                {/* Conditional rendering based on action type */}
-                {action.isCallAction ? (
-                  <div className="mt-4">
-                    <CallButton 
-                      phoneNumber="+917019316634"
-                      className="w-full text-sm justify-center"
-                      variant="primary"
-                    />
-                  </div>
-                ) : (
-                  <button className="flex items-center text-blue-600 font-semibold text-sm group-hover:text-blue-700 transition-colors">
-                    Get Started 
-                    <ChevronRight size={16} className="ml-1 group-hover:translate-x-1 transition-transform" />
-                  </button>
-                )}
+                <button className="flex items-center text-blue-600 font-semibold text-sm group-hover:text-blue-700 transition-colors">
+                  Get Started 
+                  <ChevronRight size={16} className="ml-1 group-hover:translate-x-1 transition-transform" />
+                </button>
               </motion.div>
             );
           })}
@@ -338,7 +405,10 @@ export default function Dashboard({ teacherId }) {
                 <BookOpen size={48} className="mx-auto mb-4 text-gray-300" />
                 <h3 className="text-lg font-semibold text-gray-600 mb-2">No recent activity</h3>
                 <p className="text-gray-500 mb-6">Start creating content to see your activity here!</p>
-                <button className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300">
+                <button 
+                  onClick={() => handleQuickAction('content')}
+                  className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300"
+                >
                   Create Your First Content
                 </button>
               </motion.div>
@@ -371,9 +441,9 @@ export default function Dashboard({ teacherId }) {
                 icon: BookOpen
               },
               {
-                title: "Differentiate Materials",
-                tip: "Upload textbook pages to instantly create materials for different grade levels in your classroom.",
-                icon: Layers
+                title: "Build Interactive Quizzes",
+                tip: "Use our quiz builder to create engaging assessments that adapt to different learning levels.",
+                icon: FileText
               },
               {
                 title: "Assess with Speech",
